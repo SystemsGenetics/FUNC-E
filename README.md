@@ -117,5 +117,3 @@ Os.33296.2.S1_at        LOC_Os01g01180  0.636363636363636
 Os.33296.1.S1_at        LOC_Os01g01190  0.5
 Os.33296.1.S1_x_at      LOC_Os01g01190  0.5    
 ```
-
-# Example Usage
