@@ -42,7 +42,20 @@ AT1G01073
 AT1G01080
 ```
 ## Query List
-The query list contains the gene or probeset list that will undergo functional enrichment.  This file allows you to specify multiple groups (i.e. modules) of genes for enrichment. The file should be tab-delimited.  The first column should contain the list of genes and the second column the group (or module) name name.  The group name allows for multiple groups of genes to be listed in the same file but enrichment  performed separately for each. The second column, however, may be left blank and only a single column of gene names can be provided.  If the query list is a set of probesets but annotations are associated with genes then a file mapping probesets to features should be provided (see -c option of KINC).
+The query list contains the gene or probeset list that will undergo functional enrichment.  This file allows you to specify multiple groups (i.e. modules) of genes for enrichment. The file should be tab-delimited.  The first column should contain the list of genes and the second column the group (or module) name name.  The group name allows for multiple groups of genes to be listed in the same file but enrichment  performed separately for each. The second column, however, may be left blank and only a single column of gene names can be provided.  
+
+```
+AT1G01010 Module1
+AT1G01020 Module1
+AT1G01030 Module1
+AT1G01040 Module1
+AT1G01046 Module2
+AT1G01050 Module2
+AT1G01060 Module2
+AT1G01070 Module2
+AT1G01073 Module2
+AT1G01080 Module2
+```
 
 ## Term List
 A term list is a file that contains the terms used for enrichment.  This file should be a tab delimited file with three columns:  term category, term name and description.  The term name must be unique (e.g. term accession).  The term list can be contained in one large file with all terms from multiple vocabularies combined, or each vocabulary can be in separate files.  The following example combines terms from multiple vocabularies into a single list:
