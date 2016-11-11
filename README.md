@@ -99,6 +99,8 @@ IPR     IPR000002       Cdc20/Fizzy
 IPR     IPR000003       Retinoid X receptor
 IPR     IPR000005       Helix-turn-helix, AraC type
 ```
+Note: there are shell scripts in the terms directory of this repository to help creation of term lists.  Scripts for popular controlled vocabularies are provided.  See the README.md file in that directory for more details.
+
 ## Term Mapping List (--terms2features option)
 A term mapping list maps the genes in the genomic background to terms in the term list.  This file should be tab delimited and consist of two columns:  locus/transcript ID, term name. The locus/transcript ID must be present in the genomics background file and the term name must be present in in the terms list file(s).  The following is example lines from a mapping list for rice genes:
 
