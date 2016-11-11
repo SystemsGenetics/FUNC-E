@@ -47,7 +47,7 @@ Before using FUNC-E the [R] (https://cran.r-project.org/) software must also be 
 * Math::BigFloat
 * Statistics::R
 
-Once these prerequisites are met you can install FUNC-E by placing it anywhere in your path or calling the script from anywhere using the full path.
+Once these prerequisites are met you can install FUNC-E by placing the FUNC-E.pl script anywhere in your path or calling it from anywhere by using the full path.
 
 # Preparing Input Files
 
