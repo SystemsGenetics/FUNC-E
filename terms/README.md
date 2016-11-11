@@ -1,0 +1,1 @@
+The shell scripts in this directory are meant to assist in creation of the terms list (needed for the --terms argument) for FUNC-E. Each script corresponds to a different vocabulary or database of controlled terms.  At the time that these scripts are added they are verified to work.  However, if the corresponding database changes file formats or URLs these scripts may break.
