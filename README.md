@@ -4,6 +4,36 @@ FUNC-E is a Perl script used for functional enrichment of gene lists. It follows
 
 FUNC-E can be used for functional enrichment of a gene list, a probeset list (and can convert a probeset list into a gene list prior to enrichment). The gene or probeset list can contain multiple groupings (i.e. clusters or modules) and FUNC-E will perform functional enrichment on each group separately. 
 
+# Usage
+```
+perl FUNC-E.pl [options]
+```
+For a complete listing of options, run FUNC-E with the -h flag
+
+```
+perl FUNC-E.pl -h
+```
+
+# Example 
+The following example performs functional enrichment of a list of arabidopsis genes from the TAIR10 genome assembly and annotation.  It requires that four types of files are provided (see the description of the file types in the following section), and settings that control how enrichment is performed.
+```
+perl FUNC-E.pl \
+  --background arabidopsis_thaliana.TAIR10.genes.txt \
+  --query_list modules.txt \
+  --outprefix modules-enrichment \
+  --terms AraCyc.terms.txt \
+  --terms GO.terms.txt \
+  --terms IPR.terms.txt \
+  --terms Pfam.terms.txt \
+  --terms PO.terms.txt \
+  --terms2features arabidopsis_thaliana.TAIR10.genes2AraCyc.txt \
+  --terms2features arabidopsis_thaliana.TAIR10.genes2GO.txt \
+  --terms2features arabidopsis_thaliana.TAIR10.genes2IPR.txt \
+  --terms2features arabidopsis_thaliana.TAIR10.genes2Pfam.txt \
+  --terms2features arabidopsis_thaliana.TAIR10.genes2PO.txt  \
+  --ecut 0.01  \
+  --preset high 
+```
 # Installation
 Before using FUNC-E the [R] (https://cran.r-project.org/) software must also be installed.  Addittionally, the following Perl modules must also be installed:
 
@@ -85,3 +115,4 @@ Os.33296.1.S1_at        LOC_Os01g01190  0.5
 Os.33296.1.S1_x_at      LOC_Os01g01190  0.5    
 ```
 
+# Example Usage
