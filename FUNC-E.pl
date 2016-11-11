@@ -12,7 +12,7 @@ use strict;
 #------------------------------------------------------------------------------
 #  CONSTANTS
 #------------------------------------------------------------------------------
-my $VERSION = '0.4.0';
+my $VERSION = '0.4.1';
 
 #------------------------------------------------------------------------------
 # Dependencies
@@ -389,18 +389,15 @@ sub hash_input_data {
    }
 
    if($probesets2featuresf){
-      if($networkf) {
+      if($networkf){
          return (\%background,\%network,0,\%modules,\%terms,\%ttypes,\%terms2features,\%probesets2features,\%features2mod);
-      } 
-      else {
+      } else {
          return (\%background,0,\%query,\%modules,\%terms,\%ttypes,\%terms2features,\%probesets2features,\%features2mod);
       }
-   } 
-   else {
-      if($networkf) {
+   } else {
+      if($networkf){
          return (\%background,\%network,0,\%modules,\%terms,\%ttypes,\%terms2features,0,\%features2mod);
-      } 
-      else {
+      } else {
          return (\%background,0,\%query,\%modules,\%terms,\%ttypes,\%terms2features,0,\%features2mod);
       }
    }
@@ -1191,7 +1188,7 @@ sub perform_clustering {
          # if the genes in the seed group have a set percentage (e.g. 50%) of genes
          # that have high quality kappa scores with all other genes then let's keep this
          # cluster
-         if($total_count > 0 and $gene_count_weight >= $INITIAL_GROUP_MEMBERSHIP and ($good_count / $total_count) >= $PERCENT_SIMILARITY){
+         if($gene_count_weight >= $INITIAL_GROUP_MEMBERSHIP and ($good_count / $total_count) >= $PERCENT_SIMILARITY){
             push(@{$groups},join("|",@test_seed));  
             if($debug){
                print "Good Group $features[$i]:". (scalar(@{$groups})-1) .", " . (100*($good_count / $total_count)). "% " .
@@ -1269,7 +1266,7 @@ sub perform_clustering {
                  $groups->[$j] = '';  # deactivate the group
                  push(@{$groups},join("|",sort @group_features));  
                  $consolidated = 1;
-                 if($debug and $total_count > 0){
+                 if($debug){
                     print "Consolidated ($i,$j) -> ". (scalar(@{$groups}) - 1) . ", " . (100 * ($shared_count/$total_count)) . "%: " .join(", ",@group_features) . "\n";
                  }
                }
@@ -1558,9 +1555,11 @@ sub stats_reports {
          $cluster_num++;
         
          print MOD_REPORT "\nCLUSTER $cluster_num\t";
-         print MOD_REPORT "score: $gstats->{$module}{$gid}{score}\t";
-         print MOD_REPORT "mean: $gstats->{$module}{$gid}{mean}\t";
-         print MOD_REPORT "geo: $gstats->{$module}{$gid}{geo}\n";           
+         print MOD_REPORT "num genes: " . scalar(@{$gstats->{$module}{$gid}{nodes}}) . "\t";
+         print MOD_REPORT "score: " . sprintf("%.4f", $gstats->{$module}{$gid}{score}) . "\t";
+         print MOD_REPORT "mean: " . sprintf("%.4f", $gstats->{$module}{$gid}{mean}) . "\t";
+         print MOD_REPORT "geo: " . sprintf("%.4f", $gstats->{$module}{$gid}{geo}) . "\n";           
+         print MOD_REPORT "genes: " . join (", ", @{$gstats->{$module}{$gid}{nodes}}) ."\n";
          for(@{$gstats->{$module}{$gid}{features}}){
             print CLUSTER_LOCI "$module\tCluster$cluster_num\t$_\t$gstats->{$module}{$gid}{score}";
             if($network){
@@ -1772,7 +1771,7 @@ sub _printUsage {
 
        You may repeat this argument for as many mapping files needed.
 
-    -c|--probesets2feature <filename>
+    -c|--probeste2feature <filename>
        Optional.  Specify the name of the file that contains a mapping of 
        probesets to genomic features (genes). This file should be tab delimited
        and consist of three columns: probeset name, locus name, and mapping 
@@ -1847,10 +1846,10 @@ sub _printUsage {
        cluster after all clustering.  If the cluster has fewer terms it is 
        thrown out.  The default value is 3.      
 
-    -r|--preset <lowest|low|medium|high|higest>
+    -r|--preset <lowest|low|medium|high|highest>
        Optional.  Rather than specify the clusteing option above, several
        presets exist that classify stringency while clustering. These presets
-       are named lowest, low, medium, high and higest.   Select the level
+       are named lowest, low, medium, high and highest.   Select the level
        of stringency desired.  This preset is ignored if any of the other
        parameters above are set
     );
