@@ -1347,7 +1347,8 @@ sub calculate_cluster_stats {
  
    my $gid;
    my @groups;
-   my $product;
+   my $product_geo;
+   my $product_score;
    my $sum;
    my $num_terms;
    my %gstats;
@@ -1450,22 +1451,23 @@ sub calculate_cluster_stats {
          # calculate the geometric mean and score of the cluster.  For extremely
          # small numbers we may get a rounding error. We'll use the Math::BigFloat
          # module to overcome this problem
-         $product = Math::BigFloat->new("1");  # set to 1 
-         $product->accuracy(64);
+         $product_geo = Math::BigFloat->new("1");  # set to 1 
+         $product_score = Math::BigFloat->new("1");  # set to 1 
+         $product_geo->accuracy(64);
+         $product_score->accuracy(64);
          $sum = 0;
          for $term (@{$gstats{$module}{$gid}{terms}}){
             $type = $term_types->{$term};
-            $product = $product * $enriched->{$module}{$type}{$term};
+            $product_geo = $product_geo * $enriched->{$module}{$type}{$term};
+            $product_score = $product_score * $enriched->{$module}{$type}{$term};
             $sum = $sum + $enriched->{$module}{$type}{$term};
          }
 
          # set the score for the cluster
          $num_terms = scalar(@{$gstats{$module}{$gid}{terms}});
-#         $gstats{$module}{$gid}{geo} = $product ** (1/$num_terms);  # geometric mean
-         $gstats{$module}{$gid}{geo} = $product->bpow(1/$num_terms);  # geometric mean
+         $gstats{$module}{$gid}{geo} = $product_geo->bpow(1/$num_terms);  # geometric mean
          if($gstats{$module}{$gid}{geo} > 0){
-#            $gstats{$module}{$gid}{score} = -log10($gstats{$module}{$gid}{geo}); # the enrichment score
-            $gstats{$module}{$gid}{score} = - $gstats{$module}{$gid}{geo}->blog(10);
+            $gstats{$module}{$gid}{score} = $product_score->bpow(1/$num_terms)->blog(10);  # geometric mean
          }
          $gstats{$module}{$gid}{mean} = $sum/$num_terms;            # mean (average)        
       }
@@ -1558,7 +1560,7 @@ sub stats_reports {
          print MOD_REPORT "num genes: " . scalar(@{$gstats->{$module}{$gid}{nodes}}) . "\t";
          print MOD_REPORT "score: " . sprintf("%.4f", $gstats->{$module}{$gid}{score}) . "\t";
          print MOD_REPORT "mean: " . sprintf("%.4f", $gstats->{$module}{$gid}{mean}) . "\t";
-         print MOD_REPORT "geo: " . sprintf("%.4f", $gstats->{$module}{$gid}{geo}) . "\n";           
+         print MOD_REPORT "geo: " . sprintf("%.4e", $gstats->{$module}{$gid}{geo}) . "\n";           
          print MOD_REPORT "genes: " . join (", ", @{$gstats->{$module}{$gid}{nodes}}) ."\n";
          for(@{$gstats->{$module}{$gid}{features}}){
             print CLUSTER_LOCI "$module\tCluster$cluster_num\t$_\t$gstats->{$module}{$gid}{score}";
@@ -1586,7 +1588,8 @@ sub stats_reports {
          }
          print MOD_REPORT "Category\tTerm\tMod Count\tBg Count\t".
             "Percentage\tFold Enrichment\tpvalue\tBonferroni".
-            "\tBenjamini\tFDR\n";
+            #"\tBenjamini\tFDR\n";
+            "\tBenjamini\n";
          
          for($i =0; $i < scalar(@terms); $i++){   
             $term = $terms[$i];
@@ -1601,12 +1604,14 @@ sub stats_reports {
                #"\t$gstats->{$module}{$gid}{PDC}".
                #"\t$gstats->{$module}{$gid}{direct_connects_weights}\n";
             };
+            $bg_count = $counts->{'Background'}{$type}{terms}{$term}{count};
+            $module_count = $counts->{$module}{$type}{terms}{$term}{count};
             print CLUSTER_TERMS "\n";
             print MOD_REPORT "$type\t";
             print MOD_REPORT "$terms[$i]|";    # term
             print MOD_REPORT "$terms->{$term}{def}\t";  # description
-            print MOD_REPORT "$counts->{$module}{$type}{terms}{$term}{count}\t";   # count
-            print MOD_REPORT "$counts->{'Background'}{$type}{terms}{$term}{count}\t";
+            print MOD_REPORT "$module_count\t";
+            print MOD_REPORT "$bg_count\t";
             if($bg_count){
                print MOD_REPORT (($module_count/$bg_count) * 100). "\t";   # %
             } else {
