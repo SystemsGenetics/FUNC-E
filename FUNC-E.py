@@ -132,8 +132,8 @@ if __name__ == "__main__":
     t2f_full = t2f_full.reset_index()
     t2f_full = t2f_full.set_index('Feature').join(query_list.set_index('Feature'), on='Feature', how="left")
     t2f_full = t2f_full.reset_index()
-    print(t2f_full)
     modCounts = t2f_full.groupby(['Module','Vocabulary','Term']).nunique()
     modCounts = modCounts['Feature'].reset_index()
-    print(modCounts)
-    #bgcounts = bg2terms.groupby('Term').nunique()
+
+    # Perform a Fishers' Test for each term
+    print(modCounts['Vocabulary'].unique())
