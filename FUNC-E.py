@@ -8,6 +8,7 @@ FUNC-E
     :synopsis:
 """
 import argparse
+import pandas as pd
 
 VERSION = '1.0.1';
 
@@ -83,7 +84,7 @@ if __name__ == "__main__":
     MULTIPLE_LINKAGE_THRESHOLD = args.multiple_linkage_threshold
     FINAL_GROUP_MEMBERSHIP = args.final_group_membership
 
-    if not args.preset.empty:
+    if args.preset:
         if args.preset == "lowest":
             SIMILARITY_THRESHOLD = 0.20
         if args.preset == "low":
@@ -94,3 +95,45 @@ if __name__ == "__main__":
             SIMILARITY_THRESHOLD = 0.85
         if args.preset == "highest":
             SIMILARITY_THRESHOLD = 1.00
+
+    # Load the background file.
+    background = pd.read_csv(args.background, header=None)
+    background.columns = ['Feature']
+    background.set_index('Feature')
+
+    # Load the query file.
+    query_list = pd.read_csv(args.query_list, header=None, sep="\t")
+    if len(query_list.columns) == 1:
+        query_list.columns = ['Feature']
+        query_list['Module'] = 'M1'
+    else:
+        query_list.columns = ['Feature', 'Module']
+
+    # Load the terms
+    terms = pd.DataFrame(columns=['Vocabulary', 'Term', 'Description'])
+    for tfile in args.terms:
+        new_terms = pd.read_csv(tfile, header=None, sep="\t")
+        new_terms.columns = ['Vocabulary', 'Term', 'Description']
+        terms = pd.concat([terms, new_terms])
+
+    # Load the terms2features
+    terms2features = pd.DataFrame(columns=['Feature', 'Term'])
+    for t2ffile in args.terms2features:
+        new_terms2f = pd.read_csv(t2ffile, header=None, sep="\t")
+        new_terms2f.columns = ['Feature', 'Term']
+        terms2features = pd.concat([terms2features, new_terms2f])
+
+    # Count the background terms.
+    bg2terms = background.join(terms2features.set_index('Feature'), on='Feature', how="left")
+    bgCounts = bg2terms.groupby('Term').nunique()
+
+    # Count the module terms
+    t2f_full = terms2features.set_index('Term').join(terms.set_index('Term'), on='Term', how="left")
+    t2f_full = t2f_full.reset_index()
+    t2f_full = t2f_full.set_index('Feature').join(query_list.set_index('Feature'), on='Feature', how="left")
+    t2f_full = t2f_full.reset_index()
+    print(t2f_full)
+    modCounts = t2f_full.groupby(['Module','Vocabulary','Term']).nunique()
+    modCounts = modCounts['Feature'].reset_index()
+    print(modCounts)
+    #bgcounts = bg2terms.groupby('Term').nunique()
