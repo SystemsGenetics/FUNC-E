@@ -9,6 +9,7 @@ FUNC-E
 """
 import argparse
 import pandas as pd
+import scipy.stats as stats
 
 VERSION = '1.0.1';
 
@@ -126,14 +127,50 @@ if __name__ == "__main__":
     # Count the background terms.
     bg2terms = background.join(terms2features.set_index('Feature'), on='Feature', how="left")
     bgCounts = bg2terms.groupby('Term').nunique()
+    bgCounts = bgCounts['Feature'].reset_index();
 
-    # Count the module terms
+    # Count the terms in the query file modules.
     t2f_full = terms2features.set_index('Term').join(terms.set_index('Term'), on='Term', how="left")
     t2f_full = t2f_full.reset_index()
     t2f_full = t2f_full.set_index('Feature').join(query_list.set_index('Feature'), on='Feature', how="left")
     t2f_full = t2f_full.reset_index()
-    modCounts = t2f_full.groupby(['Module','Vocabulary','Term']).nunique()
-    modCounts = modCounts['Feature'].reset_index()
+    queryCounts = t2f_full.groupby(['Module','Vocabulary','Term']).nunique()
+    queryCounts = queryCounts['Feature'].reset_index()
 
-    # Perform a Fishers' Test for each term
-    print(modCounts['Vocabulary'].unique())
+    # Perform a Fishers' Test for each term. First iterate through the
+    # unique vocabularies.
+    for vocab in queryCounts['Vocabulary'].unique():
+        vocabCounts = queryCounts.loc[queryCounts['Vocabulary'] == vocab]
+        # Second iterate through the unique modules with counts in this vocabulary.
+        for module in vocabCounts['Module'].unique():
+            modCounts = vocabCounts.loc[vocabCounts['Module'] == module]
+            # Third iterate through the unique terms with counts in this module.
+            for term in modCounts['Term'].unique():
+                #  Contigency matrix for each term in a module:
+                #
+                #                     Yes       No     Totals
+                #                  ------------------
+                #  In Module       |  n11   |   n12  | n1p
+                #  In Background   |  n21   |   n22  | n2p
+                #                  -----------------
+                #  Totals           np1      np2      npp
+                #
+
+                n11 = modCounts.loc[modCounts['Term'] == term]['Feature'].iloc[0]
+                n21 = bgCounts.loc[bgCounts['Term'] == term]['Feature'].iloc[0]
+                n1p = modCounts['Feature'].sum()
+                n2p = bgCounts['Feature'].sum()
+                n12 = n1p - n11;
+                n22 = n2p - n21;
+                np1 = n11 + n21;
+                np2 = n12 + n22;
+                npp = np1 + np2;
+                oddsratio, pvalue = stats.fisher_exact([[n11, n12], [n21, n22]])
+                print("\n             Module: %s, Term: %s" % (module, term))
+                print("                    Yes      No")
+                print("               ---------------------")
+                print("In Module     | %8d | %8d | %8d" % (n11,n12,n1p))
+                print("In Background | %8d | %8d | %8d" % (n21,n22,n2p))
+                print("               ---------------------")
+                print("                %8d   %8d   %8d" % (np1,np2,npp))
+                print("p-value: %f" % (pvalue))
