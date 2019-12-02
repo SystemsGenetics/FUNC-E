@@ -713,21 +713,21 @@ sub do_enrichment {
             $np1 = $n11 + $n21;
             $np2 = $n12 + $n22;
             $npp = $np1 + $np2;
-            #print qq(
-            #   $module, $type,  $term
-            #   $n11\t$n12\t$n1p
-            #   $n21\t$n22\t$n2p
-            #   $np1\t$np2\t$npp
-            #);
+            print qq(
+               $module, $type,  $term
+               $n11\t$n12\t$n1p
+               $n21\t$n22\t$n2p
+               $np1\t$np2\t$npp
+            );
 
             # calculate the fishers test usin R
             my $rcmd = " contmatrix = matrix(as.numeric(c($n11, $n12, $n21, $n22)), nr=2, dimnames=list(Present = c(\"Yes\", \"No\"), Module  = c(\"$module\",\"Background\"))); ret = fisher.test(contmatrix,alternative=\"greater\"); ret\$p.value ";
 
             $p = $R->run($rcmd);
             $p =~ s/\[\d+\]\s+//;
-            #print qq(
-            #   p = $p
-            #);
+            print qq(
+               p = $p
+            );
             if($p < $ecut){
               $enriched{$module}{$type}{$term} = $p;
             }
@@ -1055,7 +1055,7 @@ sub calculate_kappa {
 
             # only store kappa statistics for genes that have a score >= to the threshold
             if($k >= $SIMILARITY_THRESHOLD){
-               if($debug){
+               #if($debug){
                   print "$module: $features[$i], $features[$j] ($i, $j) of ".scalar(@features)."\n";
                   print "   $c11   $c01   $c_1\n";
                   print "   $c10   $c00   $c_0\n";
@@ -1063,7 +1063,7 @@ sub calculate_kappa {
                   print "   Observed:  $oa\n";
                   print "   Chance:    $ca\n";
                   print "   Kappa:     $k\n";
-               }
+               #}
                # store the kappa values in the matrix but only
                # those >= KAPPA_THRESHOLD.
                $kMatrix{$module}{$features[$i]}{$features[$j]} = $k;
