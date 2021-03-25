@@ -448,11 +448,14 @@ if __name__ == "__main__":
 
         # Apply multiple testing correction using Bonferroni and Benjamini-Hochberg
         # on a per-module basis.
-        bonferroni = sm.multipletests(modResults["Fishers pVal"], method='bonferroni')
-        benjamini = sm.multipletests(modResults["Fishers pVal"], method='fdr_bh')
-        modResults['Bonferroni'] = bonferroni[1]
-        modResults['Benjamini'] = benjamini[1]
-        results = results.append(modResults, ignore_index=True, sort=False)
+        bonferroni = [None, None]       # Default length-two list for scope
+        benjamini = [None, None]
+        if len(modResults["Fishers pVal"]) > 0:     # some terms are significant by ecut standard
+            bonferroni = sm.multipletests(modResults["Fishers pVal"], method='bonferroni')
+            benjamini = sm.multipletests(modResults["Fishers pVal"], method='fdr_bh')
+        else:
+            bonferroni = ["Not enough significant terms", "Not enough significant terms"]   # message in result if insufficient terms
+            benjamini = ["Not enough significant terms", "Not enough significant terms"]
 
     # Write the enrichment report to a file.
     results.to_csv(args.outprefix + ".enrichment.tab", sep="\t")
