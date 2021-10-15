@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: func-e-k8s
+  labels:
+    app: func-e-k8s
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: func-e-k8s
+  template:
+    metadata:
+      labels:
+        app: func-e-k8s
+    spec:
+      containers:               
+      - name: func-e-k8s
+        image: ebensma/pyfunce:latest
+        command: [ "/bin/bash", "-c", "--" ]
+        args: [ "tail -f /dev/null" ]
+        resources:
+          requests:
+            cpu: 1
+            memory: 64Gi
+          limits:
+            cpu: 1
+            memory: 64Gi
+        volumeMounts:
+        - name: vol-1
+          mountPath: /workspace
+      restartPolicy: Always
+      volumes:
+        - name: vol-1
+          persistentVolumeClaim:
+            claimName: deepgtex-prp # Enter valid PVC
