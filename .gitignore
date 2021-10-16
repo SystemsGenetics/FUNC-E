@@ -1,0 +1,7 @@
+bin/*.terms.txt
+bin/entry.list
+bin/go.obo
+bin/ko
+bin/md
+bin/pathway
+bin/wget-log

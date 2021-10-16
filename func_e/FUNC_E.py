@@ -1,13 +1,17 @@
 import pandas as pd
+import numpy as np
 import scipy.stats as stats
 import statsmodels.stats.multitest as sm
+from sklearn.metrics import cohen_kappa_score
+import progressbar
+import sys
 
 
 class FUNC_E(object):
 
     def __init__(self):
         self.background = None
-        self.terms = pd.DataFrame(columns=['Vocabulary', 'Term', 'Definition'])
+        self.terms = pd.DataFrame(columns=['Vocabulary', 'Term', 'Name'])
         self.modules = None
         self.query = None
         self.terms2features = pd.DataFrame(columns=['Feature', 'Term'])
@@ -30,8 +34,13 @@ class FUNC_E(object):
         self.similarity_threshold = 0.50
 
         # Dataframes containing results
-        self.enrichment = pd.DataFrame(columns=["Module", "Term", "Definition", "Mod Count", "Background Count", "Fishers pVal"])
+        self.enrichment = pd.DataFrame(columns=["Module", "Term", "Name", "Mod Count", "Background Count", "Fishers pVal"])
         self.clusters = None
+        self.kappa = pd.DataFrame(columns=['Feature1', 'Feature2', 'Module', 'Score'])
+
+        # The set of features that have enriched terms.
+        self.efeatures = pd.DataFrame(columns=["Feature", "Module", "Term"])
+
 
     def setVerbosity(self, level=0):
         self.verbose = level
@@ -93,10 +102,10 @@ class FUNC_E(object):
         self.terms = terms
 
     def importTermsFiles(self, files):
-        terms = pd.DataFrame(columns=['Vocabulary', 'Term', 'Definition'])
+        terms = pd.DataFrame(columns=['Vocabulary', 'Term', 'Name'])
         for tfile in files:
             new_terms = pd.read_csv(tfile, header=None, sep="\t")
-            new_terms.columns = ['Vocabulary', 'Term', 'Definition']
+            new_terms.columns = ['Vocabulary', 'Term', 'Name']
             terms = pd.concat([terms, new_terms])
         self.setTerms(terms)
 
@@ -163,41 +172,95 @@ class FUNC_E(object):
             return False
         return True
 
+    def _log(self, message, level=1, end="\n"):
+        if self.verbose >= level:
+            print(message, end=end, flush=True)
+
+    def run(self):
+        """
+        """
+        if self.isReady() is False:
+            self._log("Cannot perform this step as all necessary inputs are not set.")
+            return
+
+        self._log("Counting terms in the module(s) and background...")
+        self.doCounts()
+
+        self._log("Perform enrichment analysis...")
+        self.doEnrichment()
+
+        self._log("Perform multiple testing correction...")
+        self.doMTC()
+
+        self._log("Perform Kappa analysis...")
+        self.doKappa()
+
+        if self.verbose == 1:
+            print("Done")
+
     def doModuleEnrichment(self, module):
         """
         """
         if self.isReady() is False:
-            if self.verbose == 1:
-                print("Cannot perform this step as all necessary inputs are not set.")
+            self._log("Cannot perform this step as all necessary inputs are not set.")
             return
 
+        # Remove any previous resutls for this module that might be in the results.
+        self.enrichment.drop(index=self.enrichment.index[self.enrichment['Module'] == module], inplace=True)
+        self.efeatures.drop(index=self.efeatures.index[self.efeatures['Module'] == module], inplace=True)
+
         modCounts = self.queryCounts.loc[self.queryCounts['Module'] == module]
-        modResults = pd.DataFrame(columns=["Module", "Term", "Definition", "Mod Count", "Background Count", "Fishers pVal"])
+        modResults = pd.DataFrame(columns=["Module", "Term", "Name", "Mod Count", "Background Count", "Fishers pVal"])
+
+        pbar = progressbar.ProgressBar(max_value=len(modCounts['Term'].unique()))
 
         # Second iterate through the unique modules with counts in this vocabulary.
+        total_tests = 0
         for vocab in modCounts['Vocabulary'].unique():
             modVocabCounts = modCounts.loc[modCounts['Vocabulary'] == vocab]
             # Third iterate through the unique terms with counts in this module.
             for term in modVocabCounts['Term'].unique():
+                total_tests = total_tests + 1
+                pbar.update(total_tests)
                 n11, n21, pvalue = self._performFishersTest(term, module, vocab, modCounts, modVocabCounts)
 
                 # If the Fisher's p-value is less than the cutoff then keep it.
                 if pvalue < self.ecut:
-                    definition = self.terms.loc[self.terms['Term'] == term]['Definition'].iloc[0]
-                    modResults = modResults.append({"Module": module, "Term": term, "Definition": definition, "Mod Count": n11, "Background Count": n21, "Fishers pVal": pvalue}, ignore_index=True)
+                    name = self.terms.loc[self.terms['Term'] == term]['Name'].iloc[0]
+                    modResults = modResults.append({
+                      "Module": module,
+                      "Term": term,
+                      "Name": name,
+                      "Mod Count": n11,
+                      "Background Count": n21,
+                      "Fishers pVal": pvalue}, ignore_index=True)
+
+        pbar.update(total_tests)
+        pbar.finish()
+
+        # Combine the module's enriched terms with the full result set.
         self.enrichment = pd.concat([self.enrichment, modResults], ignore_index=True)
+
+        # Create the list of genes with enriched features.
+        efeatures = pd.DataFrame(self.terms2features.set_index('Term')
+            .join(modResults.set_index('Term'), how="inner")[['Feature', 'Module']]
+            .reset_index()
+            .groupby(['Feature', 'Module'])['Term']
+            .apply(list)).reset_index()
+
+        efeatures = efeatures.set_index(['Feature','Module']).join(self.query.set_index(['Feature','Module']), how='inner').reset_index()
+        self.efeatures = pd.concat([self.efeatures, efeatures], ignore_index=True)
+
 
     def doEnrichment(self):
         """
         """
         if self.isReady() is False:
-            if self.verbose == 1:
-                print("Cannot perform this step as all necessary inputs are not set.")
+            self._log("Cannot perform this step as all necessary inputs are not set.")
             return
 
         for module in self.modules:
-            if self.verbose > 0:
-                print("Performing Fisher's Tests on module: %s" % (module))
+            self._log("Working on module: %s" % (module))
             self.doModuleEnrichment(module)
 
     def doMTC(self):
@@ -221,52 +284,187 @@ class FUNC_E(object):
         self.enrichment['Bonferroni'] = bonferroni[1]
         self.enrichment['Benjamini'] = benjamini[1]
 
-    def doModuleClustering(self, module):
+    def doModuleKappa(self, module):
+        """
+        """
         if self.isReady() is False:
             if self.verbose == 1:
                 print("Cannot perform this step as all necessary inputs are not set.")
             return
 
+
+        self.kappa.drop(index=self.kappa.index[self.kappa['Module'] == module], inplace=True)
+
         # Initialize the dataframe that will house pairwise Kappa scores.
-        kappaResults = pd.DataFrame(columns=['Feature1', 'Feature2', 'Score'])
+        scores = []
+        efeatures = self.efeatures[self.efeatures['Module'] == module]['Feature'].unique()
 
-        modResults = self.enrichment[self.enrichment['Module'] == module]
+        qfterms = pd.DataFrame(self.terms2features.set_index(['Feature'])
+          .join(self.query.set_index('Feature'), how='inner')
+          .reset_index()
+          .groupby(['Feature','Module'])['Term']
+          .apply(list)).reset_index().set_index('Feature')
+        qfterms = qfterms[qfterms['Module'] == module]['Term'].to_dict()
+        nf = len(qfterms.keys())
+        ncomps = int((nf * (nf-1)) / 2)
+        self._log("Performing {:,d} Kappa comparisons for {} features...".format(ncomps, nf))
 
-        # Get the list of features that have enriched terms.
-        qModule = self.query.loc[self.query['Module'] == module]
-        qModTerms = qModule.set_index('Feature').join(self.terms2features.set_index('Feature'), on="Feature", how="left", lsuffix="_q", rsuffix="_t2f")
-        qModTerms = qModTerms.reset_index()
-        efeatures = modResults.set_index('Term').join(qModTerms.set_index('Term'), on="Term", lsuffix="_res", rsuffix="_q")
-        efeatures = efeatures['Feature'].unique()
-        efeatures.sort()
+        pbar = progressbar.ProgressBar(max_value=ncomps)
 
         # Iterate through the list of features that have enriched terms and
         # perform pair-wise Kappa.
+        total_comps = 0
         for i in range(0, len(efeatures)):
-            if self.verbose > 0:
-                print("  Working on feature %d of %d" % (i, len(efeatures)))
             for j in range(i+1, len(efeatures)):
-                pass
-                k = self._calculateKappa(efeatures[i], efeatures[j])
-                if k >= self.similarity_threshold:
-                    kappaResults = kappaResults.append({'Feature1': efeatures[i], 'Feature2': efeatures[j], 'Score': k}, ignore_index=True)
-                    if self.verbose > 2:
-                        print("%d of %d, %s vs %s: %f" % (j, len(efeatures), efeatures[i], efeatures[j], k))
 
-        kappaResults.index = pd.MultiIndex.from_frame(kappaResults[['Feature1', 'Feature2']])
+                total_comps = total_comps + 1
+                pbar.update(total_comps)
+
+                fi = efeatures[i]
+                fj = efeatures[j]
+
+                fi_terms = set(qfterms[fi])
+                fj_terms = set(qfterms[fj])
+
+                u = list(fi_terms | fj_terms)
+
+                # If we don't have enough shared terms to meet the minimum
+                # overlap then skip this comparison.
+                if len(u) < self.similarity_overlap:
+                    continue
+
+                li = [x in fi_terms for x in u]
+                lj = [x in fj_terms for x in u]
+
+                # Skip pairwise comparisons that have fewer overlaps that the
+                # minium required.
+                overlap = sum([li[x] & lj[x] for x in range(0, len(u))])
+
+                k = 0
+                if overlap < self.similarity_overlap:
+                    continue
+                elif overlap == len(u):
+                    k = 1
+                else:
+                    k = cohen_kappa_score(li, lj)
+
+                if k >= self.similarity_threshold:
+                    scores.append([fi, fj, module, k])
+
+        pbar.update(total_comps)
+        pbar.finish()
+        self.kappa = pd.concat([self.kappa, pd.DataFrame(scores, columns=['Feature1', 'Feature2', 'Module', 'Score'])], ignore_index=True)
+
+    def doKappa(self):
+        """
+        """
+        if self.isReady() is False:
+            self._log("Cannot perform this step as all necessary inputs are not set.")
+            return
+
+        for module in self.modules:
+            self._log("Performing Kappa test on module: %s" % (module))
+            self.doModuleKappa(module)
+
+    def _getValidSeedGroups(self, efeatures, seeds, kappa):
+        """
+        """
+        groups = []
+
+        # Add the seed groups that pass tests to the initial set of groups.
+        for i in range(0, len(efeatures)):
+            feature = efeatures[i]
+
+            if not (feature in seeds.keys()):
+                continue
+
+            # Start with a seed with all of the features that have a passing
+            # kappa score with the current feature.
+            test_seed = seeds[feature]
+            test_seed.add(feature)
+            test_seed = list(test_seed)
+
+            # A group must have at least a set number of genes before it
+            # can be considered a seed group.
+            if len(test_seed) < self.initial_group_membership:
+                continue
+
+            # keep track of the number of pairs that are good
+            good_count = 0
+            # keep track of total comparisions
+            total_count = 0
+            # Count the number of genes that have a kappa score > the threshold
+            for j in range(0, len(test_seed)):
+                for k in range(j+1, len(test_seed)):
+                    jk_index = test_seed[j] + '-' + test_seed[k]
+                    if ((jk_index in kappa.keys()) and (kappa[jk_index] > self.similarity_threshold)):
+                        good_count = good_count + 1
+                    total_count = total_count + 1
+
+            # if the genes in the seed group have a set percentage (e.g. 50%) of genes
+            # that have high quality kappa scores with all other genes then let's keep this
+            # cluster
+            if good_count / total_count >= self.percent_similarity:
+                groups.append(test_seed)
+
+        return groups
+
+    def _mergeGroups(self, groups):
+        """
+        """
+        print(len(groups))
+        new_groups = []
+        for i in range(0, len(groups)):
+            for j in range(i+1, len(groups)):
+                num_shared = len(set(groups[i]) & set(groups[j]))
+                perci = num_shared / len(groups[i])
+                percj = num_shared / len(groups[j])
+                if (perci >= self.multiple_linkage_threshold) or (percj >= self.multiple_linkage_threshold):
+                   new_groups.append(list(set(groups[i]) | set(groups[j])))
+
+        if len(new_groups) > 0:
+            return self._mergeGroups(new_groups)
+        else:
+            return new_groups
+
+
+    def doModuleClustering(self, module):
+        """
+        """
+        # Get the enriched features for this module
+        efeatures = self.efeatures[self.efeatures['Module'] == module]['Feature'].sort_values().unique()
+
+        # Generate the starting seeds by creating a dictionary of feature names
+        # with the values being all of the other features with which they
+        # have a meaningful kapp score.
+        f1 = self.kappa.groupby('Feature1')['Feature2'].apply(list).reset_index()
+        f2 = self.kappa.groupby('Feature2')['Feature1'].apply(list).reset_index()
+        f1.columns = ['Feature', 'Matches']
+        f2.columns = ['Feature', 'Matches']
+        seeds = pd.concat([f1, f2]).groupby('Feature')['Matches'].apply(list).apply(lambda x: set(np.sort(np.unique(np.concatenate(x))))).to_dict()
+
+        # Index the Kappa dataframe for easy lookup
+        kappa =self.kappa.copy()
+        kappa.index = kappa.apply(lambda x: "-".join(np.sort(np.array([x['Feature1'], x['Feature2']]))), axis=1)
+        kappa = kappa['Score'].to_dict()
+
+        groups = self._getValidSeedGroups(efeatures, seeds, kappa)
+        clusters = self._mergeGroups(groups)
+
+        return(groups)
+
+
 
     def doClustering(self):
         """
         """
         if self.isReady() is False:
-            if self.verbose == 1:
-                print("Cannot perform this step as all necessary inputs are not set.")
+            self._log("Cannot perform this step as all necessary inputs are not set.")
             return
 
         for module in self.modules:
-            if self.verbose > 0:
-                print("Performing Clustering on module: %s" % (module))
-            self.doClustering(module)
+            self._log("Performing clustering on module: %s" % (module))
+            self.doModuleClustering(module)
 
     def _performFishersTest(self, term, module, vocab, modCounts, modVocabCounts):
         """
@@ -309,96 +507,16 @@ class FUNC_E(object):
         np2 = n12 + n22;
         npp = np1 + np2;
         oddsratio, pvalue = stats.fisher_exact([[n11, n12], [n21, n22]], alternative="greater")
-        if self.verbose > 1:
-            print("\nFisher's Test")
-            print("Module: %s" % (module))
-            print("                  Term: %s" % (term))
-            print("                    Yes      No")
-            print("               ---------------------")
-            print("In Module     | %8d | %8d | %8d" % (n11,n12,n1p))
-            print("              |----------|----------|")
-            print("In Background | %8d | %8d | %8d" % (n21,n22,n2p))
-            print("               ---------------------")
-            print("                %8d   %8d   %8d" % (np1,np2,npp))
-            print("p-value: %f" % (pvalue))
+        self._log("\nFisher's Test", 2)
+        self._log("Module: %s" % (module), 2)
+        self._log("                  Term: %s" % (term), 2)
+        self._log("                    Yes      No", 2)
+        self._log("               ---------------------", 2)
+        self._log("In Module     | %8d | %8d | %8d" % (n11,n12,n1p), 2)
+        self._log("              |----------|----------|", 2)
+        self._log("In Background | %8d | %8d | %8d" % (n21,n22,n2p), 2)
+        self._log("               ---------------------", 2)
+        self._log("                %8d   %8d   %8d" % (np1,np2,npp), 2)
+        self._log("p-value: %f" % (pvalue), 2)
 
         return [n11, n21, pvalue]
-
-    def _calculateKappa(self, feature1, feature2, similarity_overlap, similarity_threshold):
-        """
-
-        """
-        # Get the lsit of terms assigned to each feature and join the lists.
-        # This joining will allow us to see which terms are in common.
-        i = set(self.terms2features.loc[feature1, 'Term'])
-        j = set(self.terms2features.loc[feature2, 'Term'])
-
-        # The contigency matrix is used for calculating Kappa.
-        #
-        #                 Gene i
-        #
-        #  G       |   In  |  Not  |  total
-        #  e     --|-------|-------|-------
-        #  n    In |  c11  |  c10  |  c1_
-        #  e     --|-------|-------|-------
-        #      Not |  c01  |  c00  |  c0_
-        #  j     --|-------|-------|-------
-        #    total |  c_1  |  c_0  |  tab
-        #
-        #  c11 = number of terms in common between gene i and gene j
-        #  c10 = number of terms in gene j but not in gene i
-        #  c01 = number of terms in gene i but not in gene j
-        #  c00 = number of terms in neither gene i nor gene j
-        #
-        c11 = len(i.intersection(j))
-        c10 = len(i.difference(j))
-        c01 = len(j.difference(i))
-        c00 = self.bgCounts['Feature'].sum() - (c01 + c10 + c11)
-        c_1 = c11 + c01
-        c_0 = c10 + c00
-        c0_ = c01 + c00
-        c1_ = c11 + c10
-        tab = c1_ + c0_
-
-        # Don't perform kappa stats on genes that share less than
-        # similarity_overlap number of terms.
-        if c11 < similarity_overlap:
-            return 0
-
-        # Make sure our counts are in agreement
-        if c1_ + c0_ != c_1 + c_0:
-           print("Kappa cannot be calculated because the number of agreements in gene i and gene j are not equal")
-           exit(1)
-
-        # Calculate the kappa score
-        oa = (c11 + c00) / tab
-        ca = (c_1 * c1_ + c_0 * c0_) / (tab * tab)
-
-        # Skip this if the chance agreement == 1
-        if(ca == 1):
-            return 0
-
-        # Calculate the Kappa score.
-        k = (oa - ca) / (1 - ca)
-
-        # If verbosify level is sufficient then let's print out the
-        # successful Kappa tests.
-        if self.verbose > 1:
-            if k >= similarity_threshold:
-                print("\nKappa Stats")
-                print("  Comparison: %s vs %s" % (feature1, feature2))
-                print("            In i      Not i")
-                print("         ---------------------")
-                print(" In J   | %8d | %8d | %8d" % (c11, c01, c_1))
-                print("        |----------|----------|")
-                print(" Not J  | %8d | %8d | %8d" % (c10, c00, c_0))
-                print("         ---------------------")
-                print("          %8d   %8d   %8d" % (c1_, c0_, tab))
-                print("   Observed:  %f" % (oa))
-                print("   Chance:    %f" % (ca))
-                print("   Kappa:     %f" % (k))
-                if self.verbose > 2:
-                    print(i)
-                    print(j)
-
-        return k

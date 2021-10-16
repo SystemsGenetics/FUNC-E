@@ -3,3 +3,4 @@ pandas
 scipy
 statsmodels
 sklearn
+progressbar2
