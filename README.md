@@ -149,7 +149,7 @@ Additionally, the `--ecut` option provides a p-value cutoff for enrichment, and 
 ### Generate Terms files
 Bioinformatics tools such as [InterProScan](https://www.ebi.ac.uk/interpro/about/interproscan/), [Blast2GO](https://www.blast2go.com/) and [EnTAP](https://entap.readthedocs.io/en/latest/) (to name a few) provide the mapping of genes to controlled vocabulary terms, but creating the list of all terms in a vocabulary is still needed prior to enrichment. FUNC-E makes it easy to generate these for common vocabularies such as the Gene Ontology (GO), KEGG (KEGG) and InterPro (IPR).  
 
-To use the FUNC-E API to build a list of vocabularies must first import the package into your code:
+To use the FUNC-E API to build a list of vocabularies, you must first import the package into your code:
 ```Python
 from func_e.FUNC_E import FUNC_E
 import func_e.vocabs.all as vocabs
@@ -195,10 +195,10 @@ The settings have the following meaning:
 - `final_group_membership`: This parameter sets the minimum number of terms in a cluster after all clustering. If the cluster has fewer terms it is thrown out. The default value is 4.
 
 
-Next, FUNC_E can import the files needed for enrichment analysis:
+Next, FUNC_E can import the files needed for enrichment analysis. These are the same as the example files used in the command-line example above.
 ```Python
 fe.importFiles({
-    'background': '.arabidopsis_thaliana.TAIR10.genes.txt',
+    'background': 'arabidopsis_thaliana.TAIR10.genes.txt',
     'query': 'modules.txt',
     'terms2features': ['arabidopsis_thaliana.TAIR10.genes2AraCyc.txt',
                        'arabidopsis_thaliana.TAIR10.genes2GO.txt',
