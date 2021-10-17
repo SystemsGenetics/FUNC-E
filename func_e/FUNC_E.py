@@ -223,7 +223,7 @@ class FUNC_E(object):
         if self.verbose >= level:
             print(message, end=end, file=sys.stdout, flush=True)
 
-    def run(self, cluster=True, module=None, vocab=None):
+    def run(self, cluster=True, modules=[], vocabs=[]):
         """
         """
         if self.isReady() is False:
@@ -236,21 +236,21 @@ class FUNC_E(object):
         self.doCounts()
 
         self._log("Step 2: Perform enrichment analysis...")
-        self.doEnrichment(module, vocab)
+        self.doEnrichment(modules, vocabs)
 
         self._log("Step 3: Perform multiple testing correction...")
         self.doMTC()
 
         if cluster == True:
             self._log("Step 4: Perform Kappa analysis...")
-            self.doKappa()
+            self.doKappa(modules)
 
             self._log("Step 5: Perform clustering...")
-            self.doClustering()
+            self.doClustering(modules)
 
         self._log("Done")
 
-    def doModuleEnrichment(self, module, vocab=None):
+    def doModuleEnrichment(self, module, vocabs=[]):
         """
         """
         if self.isReady() is False:
@@ -269,17 +269,17 @@ class FUNC_E(object):
 
         # Second iterate through the unique modules with counts in this vocabulary.
         total_tests = 0
-        for v in modCounts['Vocabulary'].unique():
-            if (vocab is not None) and (vocab != v):
+        for vocab in modCounts['Vocabulary'].unique():
+            if (len(vocabs) > 0) and (vocab not in vocabs):
                 continue
 
-            modVocabCounts = modCounts.loc[modCounts['Vocabulary'] == v]
+            modVocabCounts = modCounts.loc[modCounts['Vocabulary'] == vocab]
             # Third iterate through the unique terms with counts in this module.
             for term in modVocabCounts['Term'].unique():
                 total_tests = total_tests + 1
                 if self.verbose > 0:
                     pbar.update(total_tests)
-                n11, n21, pvalue = self._performFishersTest(term, module, v, modCounts, modVocabCounts)
+                n11, n21, pvalue = self._performFishersTest(term, module, vocab, modCounts, modVocabCounts)
 
                 # If the Fisher's p-value is less than the cutoff then keep it.
                 if pvalue <= self.ecut:
@@ -310,18 +310,18 @@ class FUNC_E(object):
         self.efeatures = pd.concat([self.efeatures, efeatures], ignore_index=True)
 
 
-    def doEnrichment(self, module = None, vocab = None):
+    def doEnrichment(self, modules = [], vocabs = []):
         """
         """
         if self.isReady() is False:
             self._log("Cannot perform this step as all necessary inputs are not set.")
             return
 
-        for m in self.modules:
-            if (module is not None) and (module != m):
+        for module in self.modules:
+            if (len(modules) > 0) and (module not in modules):
                 continue
-            self._log("Working on module: %s" % (m))
-            self.doModuleEnrichment(m, vocab)
+            self._log("Working on module: %s" % (module))
+            self.doModuleEnrichment(module, vocabs)
 
     def doMTC(self):
         """
@@ -420,18 +420,18 @@ class FUNC_E(object):
             pbar.finish()
         self.kappa = pd.concat([self.kappa, pd.DataFrame(scores, columns=['Feature1', 'Feature2', 'Module', 'Score'])], ignore_index=True)
 
-    def doKappa(self, module = None, ):
+    def doKappa(self, modules = [] ):
         """
         """
         if self.isReady() is False:
             self._log("Cannot perform this step as all necessary inputs are not set.")
             return
 
-        for m in self.modules:
-            if (module is not None) and (module != m):
+        for module in self.modules:
+            if (len(modules) > 0) and (module not in modules):
                 continue
-            self._log("Working on module: %s" % (m))
-            self.doModuleKappa(m)
+            self._log("Working on module: %s" % (module))
+            self.doModuleKappa(module)
 
     def _getValidSeedGroups(self, efeatures, seeds, kappa):
         """
@@ -605,18 +605,18 @@ class FUNC_E(object):
             cluster_terms[i][1]['Cluster_Index'] = cluster_terms[i][0]['Cluster_Index']
             self.cluster_terms = pd.concat([self.cluster_terms, cluster_terms[i][1]], ignore_index=True)
 
-    def doClustering(self, module = None):
+    def doClustering(self, modules = []):
         """
         """
         if self.isReady() is False:
             self._log("Cannot perform this step as all necessary inputs are not set.")
             return
 
-        for m in self.modules:
-            if (module is not None) and (module != m):
+        for module in self.modules:
+            if (len(modules) > 0) and (module not in modules):
                 continue
-            self._log("Working on module: %s" % (m))
-            self.doModuleClustering(m)
+            self._log("Working on module: %s" % (module))
+            self.doModuleClustering(module)
 
     def _performFishersTest(self, term, module, vocab, modCounts, modVocabCounts):
         """

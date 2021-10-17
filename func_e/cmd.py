@@ -18,25 +18,25 @@ def parseArgs():
     parser.add_argument("--ecut", dest="ecut", type=float,
         default="", required=True, help="Required.  The p-value cutoff for enrichment (Fisher's test)")
 
-    parser.add_argument("--outprefix", dest="outprefix", type=str,
-        default="", required=True, help="Required.  Provide a prefix for the output reports.")
-
     parser.add_argument("--terms", dest="terms", type=str, nargs='+',
         default="", required=True, help="Required.  Specify the name of the file that contains the list of terms used for functional enrichment.  This file should be a tab delimited file with three columns:  vocabulary ID, (e.g.GO, IPR, KEGG, Pfam, etc.) term name and description.  The term name must be unique (e.g. term accession).  You may provide more than one file to this argument but all files must follow the same format.")
 
     parser.add_argument("--terms2features", dest="terms2features", type=str, nargs='+',
         default="", required=True, help="Required.  Specify the name of the file that contains a mapping of functional terms to the genes/transcripts.  This file should be tab delimited and consist of two columns:  gene/transcript name and term name. The term name should be contained in the list of terms provided by the '--terms' argument. The gene or transcript must be present in the background file provied by the '--background' argument.  You may provide more than one file to this argument but all files must follow the same format.")
 
+    parser.add_argument("--outprefix", dest="outprefix", type=str,
+        default=None, required=False, help="Optional.  Provide a prefix for the output reports.")
+
     parser.add_argument("--module", dest="module", type=str,
-        default=None, required=False, help="Optional. Specify a module name to limit the counting by module.")
+        required=False, help="Optional. Specify a module name to limit the counting by module.")
 
     parser.add_argument("--vocab", dest="vocab", type=str, nargs='*',
-        default=None, required=False, help="Optional.  Specify the term vocabulary ID to perform enrichment and clustering.  Provide as many vocabulary IDs as desired.  Voca IDs may include, for example, GO, IPR, KEGG, TOS, GNAME or whatever vocabularies are provided.  Be sure that these vocabularies are present in the terms list or enrichment will be not be performed.")
+        required=False, help="Optional.  Specify the term vocabulary ID to perform enrichment and clustering.  Provide as many vocabulary IDs as desired.  Vocab IDs may include, for example, GO, IPR, KEGG, TOS, GNAME or whatever vocabularies are provided.  Be sure that these vocabularies are present in the terms list or enrichment will be not be performed.")
 
     parser.add_argument("--similarity_threshold", dest="similarity_threshold", type=str,
         default="0.5", required=False, help="Optional.  This value is used to threshold the kappa scores. Pair-wise kappa scores are calculated for all genes.  Kappa scores range between -1 to 1 and provide a measurment as to the similiarity of annotations between two genes.  Kappa scores greater than this value are considered meaningful and only those gene pairs with scores greater than this threshold are clustered.  The default value if not specified is 0.5.")
 
-    parser.add_argument("--similarity_overlap", dest="similarity_overlap", type=float,
+    parser.add_argument("--similarity_term_overlap", dest="similarity_term_overlap", type=float,
         default="3", required=False, help="Optional.  Before kappa statisitcs are calculated two genes must share a specified number of terms.  This parameter sets that minimum value. The default is 3.")
 
     parser.add_argument("--percent_similarity", dest="percent_similarity", type=float,
@@ -72,7 +72,7 @@ def func_e():
         'ecut': args.ecut
     })
     fe.setClusteringSettings({
-        'similarity_term_overlap': args.similarity_overlap,
+        'similarity_term_overlap': args.similarity_term_overlap,
         'percent_similarity': args.percent_similarity,
         'initial_group_membership': args.initial_group_membership,
         'multiple_linkage_threshold': args.multiple_linkage_threshold,
@@ -87,9 +87,10 @@ def func_e():
     })
 
     # Run the functional enrichment
-    fe.run(module=args.module, vocab=args.vocab)
+    fe.run(modules=args.module, vocabs=args.vocab)
 
     # Write out the results files.
-    fe.enrichment.sort_values('Fishers_pvalue').to_csv(args.outprefix + '.FUNC-E.enriched_terms.tsv', sep="\t", index=None)
-    fe.clusters.to_csv(args.outprefix + '.FUNC-E.clusters.tsv', sep="\t", index=None)
-    fe.cluster_terms.to_csv(args.outprefix + '.FUNC-E.cluster_terms.tsv', sep="\t", index=None)
+    outprefix = args.outprefix + '.' if args.outprefix else ''
+    fe.enrichment.sort_values('Fishers_pvalue').to_csv(outprefix + 'FUNC-E.enriched_terms.tsv', sep="\t", index=None)
+    fe.clusters.to_csv(outprefix + 'FUNC-E.clusters.tsv', sep="\t", index=None)
+    fe.cluster_terms.to_csv(outprefix + 'FUNC-E.cluster_terms.tsv', sep="\t", index=None)
