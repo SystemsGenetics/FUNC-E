@@ -1,12 +1,5 @@
-bin/*.terms.txt
-bin/entry.list
-bin/go.obo
-bin/ko
-bin/md
-bin/pathway
-bin/wget-log
 demo/demo_run.FUNC-E.cluster_terms.tsv
 demo/demo_run.FUNC-E.clusters.tsv
 demo/demo_run.FUNC-E.enriched_terms.tsv
-func_e/__pycache__/
+__pycache__
 
