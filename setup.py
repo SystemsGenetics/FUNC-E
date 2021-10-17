@@ -7,6 +7,7 @@ requirements = """
   statsmodels
   sklearn
   progressbar2
+  scipy
 """.split()
 
 setup(

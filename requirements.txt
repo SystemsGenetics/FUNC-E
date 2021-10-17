@@ -4,3 +4,4 @@ scipy
 statsmodels
 sklearn
 progressbar2
+scipy
