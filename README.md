@@ -59,7 +59,7 @@ AT1G01080 Module2
 ```
 
 ## Term List (--terms options)
-A term list is a file that contains the terms used for enrichment.  This file should be a tab delimited file with three columns:  term category, term name and description.  The term name must be unique (e.g. term accession).  The term list can be contained in one large file with all terms from multiple vocabularies combined, or each vocabulary can be in separate files.  The following example combines terms from multiple vocabularies into a single list:
+A term list is a file that contains the terms used for enrichment.  This file should be a tab delimited file with three columns:  vocbulary, term ID and term name.  The term ID must be unique (e.g. term accession).  The term list can be contained in one large file with all terms from multiple vocabularies combined, or each vocabulary can be in separate files.  The following example combines terms from multiple vocabularies into a single list:
 ```
 GO      GO:0000005      ribosomal chaperone activity
 GO      GO:0000008      thioredoxin
@@ -70,7 +70,7 @@ IPR     IPR000005       Helix-turn-helix, AraC type
 
 
 ## Term Mapping List (--terms2features option)
-A term mapping list maps the genes in the genomic background to terms in the term list.  This file should be tab delimited and consist of two columns:  locus/transcript ID, term name. The locus/transcript ID must be present in the genomics background file and the term name must be present in in the terms list file(s).  The following is example lines from a mapping list for rice genes:
+A term mapping list maps the genes in the genomic background to terms in the term list.  This file should be tab delimited and consist of two columns:  gene name, term ID. The gene name must be present in the genomics background file and the term name must be present in in the terms list file(s).  The following is example lines from a mapping list for rice genes:
 
 ```
 LOC_Os01g01010  GO:0005097  
