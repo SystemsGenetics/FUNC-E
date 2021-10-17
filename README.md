@@ -2,7 +2,7 @@
 
 # FUNC-E
 
-FUNC-E is a Python package for functional enrichment analysis of gene lists. It follows a similar approach to that of [DAVID] (https://david.ncifcrf.gov/) in that it performs enrichment analysis using a Fisher's test but then clusters enriched annotations using Kappa Statistics.  FUNC-E provides the following benefits:
+FUNC-E is a Python package for functional enrichment analysis of gene lists. It follows a similar approach to that of [DAVID](https://david.ncifcrf.gov/) in that it performs enrichment analysis using a Fisher's test but then clusters enriched annotations using Kappa Statistics.  FUNC-E provides the following benefits:
 
 1. FUNC-E provides a command-line tool for inclusion in workflows.
 2. FUNC-E provides an Application Programmers Interface (API) that can be used to incorporate functional enrichment into any Python script or application.
