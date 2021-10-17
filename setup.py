@@ -8,6 +8,7 @@ requirements = """
   sklearn
   progressbar2
   scipy
+  requests
 """.split()
 
 setup(

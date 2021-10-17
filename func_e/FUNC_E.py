@@ -550,8 +550,6 @@ class FUNC_E(object):
             }, ignore_index=True)
         return cluster_stats
 
-
-
     def doModuleClustering(self, module):
         """
         """
