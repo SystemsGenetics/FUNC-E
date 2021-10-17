@@ -149,7 +149,6 @@ Bioinformatics tools such as [InterProScan](https://www.ebi.ac.uk/interpro/about
 
 To use the FUNC-E API to build a list of vocabularies, you must first import the package into your code:
 ```Python
-from func_e.FUNC_E import FUNC_E
 import func_e.vocabs.all as vocabs
 ```
 
@@ -160,10 +159,13 @@ terms = vocabs.getTerms(['GO', 'KEGG', 'IPR'])
 ```
 
 ### Perform Functional Enrichment Analysis
-To perform functional enrichment using the FUNC-E API start by importing the FUNC_E object module and then instantiating a `FUNC_E` object.
+To perform functional enrichment using the FUNC-E API start by importing the FUNC_E class module:
 ```Python
 from func_e.FUNC_E import FUNC_E
+```
 
+Next, instantiating a new `FUNC_E` object.
+```Python
 fe = FUNC_E()
 ```
 
