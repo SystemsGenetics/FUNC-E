@@ -2,55 +2,23 @@
 
 # FUNC-E
 
-FUNC-E is a Perl script used for functional enrichment of gene lists. It follows a similar approach to that of [DAVID] (https://david.ncifcrf.gov/) in that it performs enrichment analysis using a Fisher's test but then clusters enriched annotations using Kappa Statistics.  FUNC-E allows the user to provide their own annotation lists. It is fully executable on a UNIX command-line.
+FUNC-E is a Python package for functional enrichment analysis of gene lists. It follows a similar approach to that of [DAVID] (https://david.ncifcrf.gov/) in that it performs enrichment analysis using a Fisher's test but then clusters enriched annotations using Kappa Statistics.  FUNC-E provides the following benefits:
 
-FUNC-E can be used for functional enrichment of a gene list, a probeset list (and can convert a probeset list into a gene list prior to enrichment). The gene or probeset list can contain multiple groupings (i.e. clusters or modules) and FUNC-E will perform functional enrichment on each group separately. 
-
-# Usage
-```
-perl FUNC-E.pl [options]
-```
-For a complete listing of options, run FUNC-E with the -h flag
-
-```
-perl FUNC-E.pl -h
-```
-
-# Example 
-The following example performs functional enrichment of a list of arabidopsis genes from the TAIR10 genome assembly and annotation.  It requires that four types of files using the arguments: --background, --query_list, --terms, and terms2features.  See the section below titled "Preparing Input Files" for imore information about these types of files.  Note that the --terms and --terms2features arguments can be provided as many times as there are files.  In this example, lists of terms (provided with the --terms toption) from  AraCyc, GO (Gene Ontology), IPR (InterPro), Pfam and PO (Plant Ontology) term lists have been prepared, as well as the mappings of these term lists to the genes.  These mappings are provided using the --terms2features option.  
-
-```
-perl FUNC-E.pl \
-  --background arabidopsis_thaliana.TAIR10.genes.txt \
-  --query_list modules.txt \
-  --outprefix modules-enrichment \
-  --terms AraCyc.terms.txt \
-  --terms GO.terms.txt \
-  --terms IPR.terms.txt \
-  --terms Pfam.terms.txt \
-  --terms PO.terms.txt \
-  --terms2features arabidopsis_thaliana.TAIR10.genes2AraCyc.txt \
-  --terms2features arabidopsis_thaliana.TAIR10.genes2GO.txt \
-  --terms2features arabidopsis_thaliana.TAIR10.genes2IPR.txt \
-  --terms2features arabidopsis_thaliana.TAIR10.genes2Pfam.txt \
-  --terms2features arabidopsis_thaliana.TAIR10.genes2PO.txt  \
-  --ecut 0.01  \
-  --preset high 
-```
-Additionally, the --ecut option provides a p-value cutoff for enrichment, the --preset option provides a level of stringency for clustering of enriched terms, and the --outprefix provides the a prefix which is added to every output file created by this script.
+1. FUNC-E provides a command-line tool for inclusion in workflows.
+2. FUNC-E provides an Application Programmers Interface (API) that can be used to incorporate functional enrichment into any Python script or application.
+3. You can provide any list of vocabularies for which you have annotations (e.g., GO, KEGG, InterPro, Pfam, etc.)
+4. FUNC-E is species agnostic.  You provide the gene names and the functional annotations.
+5. FUNC-E provides both a command-line tool and API functions for creating term lists for the Gene Ontology, KEGG and InterPro.
 
 # Installation
-Before using FUNC-E the [R] (https://cran.r-project.org/) software must also be installed.  Addittionally, the following Perl modules must also be installed:
+The Python version is currently in develop mode so you must manually clone and install it. Soon it will be available via pip.
+```
+git clone git@github.com:SystemsGenetics/FUNC-E.git
+git checkout develop
 
-* Getopt::Long
-* Text::NSP::Measures::2D::Fisher::right
-* List::Util 
-* Math::Complex
-* Math::BigFloat
-* Statistics::R
-
-Once these prerequisites are met you can install FUNC-E by placing the FUNC-E.pl script anywhere in your path or calling it from anywhere by using the full path.
-
+cd FUNC_E
+pip install .
+```
 # Preparing Input Files
 
 Before using KINC you must prepare your files.  You will need to prepare four files:
@@ -112,12 +80,168 @@ LOC_Os01g01010  GO:0005622
 LOC_Os01g01010  GO:0032313   
 LOC_Os01g01030  GO:0005507  
 ```
-## Other Files
-If you provide probesets rather than genes and you want to convert probesets to genes for the enrichment, you must also provide a file that maps probesets to genes.  This file should be tab delimited and consist of three columns: probeset name, locus name, and mapping weight.  The maping weight provides a measure of the strength of the mapping with respect to redundancy and ambiguity.  Set the weight value to '1' if it is not needed.  If this file is not provided then it is assumed a 1:1 mapping between a term and gene. For example:
+
+# Usage
+## Command-line
+### Generate Terms files
+Bioinformatics tools such as [InterProScan](https://www.ebi.ac.uk/interpro/about/interproscan/), [Blast2GO](https://www.blast2go.com/) and [EnTAP](https://entap.readthedocs.io/en/latest/) (to name a few) provide the mapping of genes to controlled vocabulary terms, but creating the list of all terms in a vocabulary is still needed prior to enrichment. FUNC-E makes it easy to generate these for common vocabularies such as the Gene Ontology (GO), KEGG (KEGG) and InterPro (IPR).  
+
+To generate a file of vocabulary terms from GO, KEGG and IPR use the following command:
+```
+FUNC-E-terms  --vocab GO KEGG IPR
+```
+This will create a file named `terms.tsv` ready for the format required by the `--terms` argument of `FUNC-E`
+
+Alternatively, you can create separate files for each vocabulary:
+
+```bash
+FUNC-E-terms --outprefix KEGG --vocab KEGG
+FUNC-E-terms --outprefix GO --vocab GO
+FUNC-E-terms --outprefix IPR --vocab IPR
+```
+
+### Perform Functional Enrichment Analysis
+FUNC-E provides the following usage instructions:
 
 ```
-Os.32622.2.S1_x_at      LOC_Os01g01170  0.5
-Os.33296.2.S1_at        LOC_Os01g01180  0.636363636363636
-Os.33296.1.S1_at        LOC_Os01g01190  0.5
-Os.33296.1.S1_x_at      LOC_Os01g01190  0.5    
+ FUNC-E [-h] --background BACKGROUND
+     --query_list QUERY_LIST
+     --ecut ECUT
+     --terms TERMS [TERMS ...]
+     --terms2features TERMS2FEATURES [TERMS2FEATURES ...]
+     [--outprefix OUTPREFIX]
+     [--module MODULE]
+     [--vocab VOCAB [VOCAB ...]]
+     [--similarity_threshold SIMILARITY_THRESHOLD]
+     [--similarity_term_overlap SIMILARITY_TERM_OVERLAP]
+     [--percent_similarity PERCENT_SIMILARITY]
+     [--initial_group_membership INITIAL_GROUP_MEMBERSHIP]
+     [--multiple_linkage_threshold MULTIPLE_LINKAGE_THRESHOLD]
+     [--final_group_membership FINAL_GROUP_MEMBERSHIP]
+     [--verbose VERBOSE]
+```
+
+For more detailed information about each argument please run the `FUNC-E -h` command.
+
+
+#### Example
+The following example performs functional enrichment of a list of arabidopsis genes from the TAIR10 genome assembly and annotation.  It requires that four types of files using the arguments: `--background`, `--query_list`, `--terms`, and `--terms2features`.  Note that the `--terms` and `--terms2features` arguments can be provided as many times as there are files.  In this example, lists of terms (provided with the `--terms` option) from  AraCyc, GO (Gene Ontology), IPR (InterPro), Pfam and PO (Plant Ontology) have been prepared, as well as the mappings of these term lists to the genes.  Genes to term mappings are provided using the `--terms2features` option.  
+
+```bash
+FUNC-E \
+  --background arabidopsis_thaliana.TAIR10.genes.txt \
+  --query_list modules.txt \
+  --outprefix modules-enrichment \
+  --terms AraCyc.terms.txt GO.terms.txt IPR.terms.txt \
+          Pfam.terms.txt PO.terms.txt \
+  --terms2features arabidopsis_thaliana.TAIR10.genes2AraCyc.txt \
+                   arabidopsis_thaliana.TAIR10.genes2GO.txt \
+                   arabidopsis_thaliana.TAIR10.genes2IPR.txt \
+                   arabidopsis_thaliana.TAIR10.genes2Pfam.txt \
+                   arabidopsis_thaliana.TAIR10.genes2PO.txt  \
+  --ecut 0.01  
+```
+Additionally, the `--ecut` option provides a p-value cutoff for enrichment, and the --outprefix provides the a prefix which is added to every output file created by this script.
+
+
+
+## Using the API
+### Generate Terms files
+Bioinformatics tools such as [InterProScan](https://www.ebi.ac.uk/interpro/about/interproscan/), [Blast2GO](https://www.blast2go.com/) and [EnTAP](https://entap.readthedocs.io/en/latest/) (to name a few) provide the mapping of genes to controlled vocabulary terms, but creating the list of all terms in a vocabulary is still needed prior to enrichment. FUNC-E makes it easy to generate these for common vocabularies such as the Gene Ontology (GO), KEGG (KEGG) and InterPro (IPR).  
+
+To use the FUNC-E API to build a list of vocabularies must first import the package into your code:
+```Python
+from func_e.FUNC_E import FUNC_E
+import func_e.vocabs.all as vocabs
+```
+
+To generate a Pandas DataFrame of vocabulary terms from GO, KEGG and IPR use the following function call:
+
+```Python
+terms = vocabs.getTerms(['GO', 'KEGG', 'IPR'])
+```
+
+### Perform Functional Enrichment Analysis
+To perform functional enrichment using the FUNC-E API start by first instantiating a `FUNC_E` object.
+```Python
+fe = FUNC_E()
+```
+
+Next, you need to set the p-value cutoff for enrichment testing:
+```Python
+fe.setEnrichmentSettings({
+    'ecut': 0.01
+})
+```
+
+If you desire, you can change the clustering default settings as well:
+```Python
+fe.setClusteringSettings({
+    'similarity_term_overlap': 3,
+    'percent_similarity': 0.50,
+    'initial_group_membership': 3,
+    'multiple_linkage_threshold': 0.50,
+    'final_group_membership':  3,
+    'similarity_threshold': 0.5
+})
+```
+The settings have the following meaning:
+
+- `similarity_threshold`: This value is used to threshold the kappa scores. Pair-wise kappa scores are calculated for all genes. Kappa scores range between -1 to 1 and provide a measurement as to the similarity of annotations between two genes. Kappa scores greater than this value are considered meaningful and only those gene pairs with scores greater than this threshold are clustered. The default value if not specified is 0.35.
+- `similarity_term_overlap`: Before kappa statistics are calculated two genes must share a specified number of terms. This parameter sets that minimum value. The default is 4.
+- `percent_similarity`: Before clustering, seed groups are created, and when creating seed groups we want high quality groups. Therefore, the members of the seed groups must themselves share similarity with all other genes in the group greater or equal than the value specified by this parameter. The default is 0.50 (50 percent)
+- `initial_group_membership`: When clustering, initial seed groups are created by grouping a gene with all other genes with which it has a significant (> similarity_threshold) kappa score. This parameter sets the minimum number of genes that must exist for a group to be considered a seed group. The default value is 4.
+- `multiple_linkage_threshold`: After initial seed groups are formed an iterative process attempts to merge seed groups that have a specified percentage of genes in common. This parameter sets this percentage. The default is 0.50 (or seed groups must share 50 percent of genes to be merged).
+- `final_group_membership`: This parameter sets the minimum number of terms in a cluster after all clustering. If the cluster has fewer terms it is thrown out. The default value is 4.
+
+
+Next, FUNC_E can import the files needed for enrichment analysis:
+```Python
+fe.importFiles({
+    'background': '.arabidopsis_thaliana.TAIR10.genes.txt',
+    'query': 'modules.txt',
+    'terms2features': ['arabidopsis_thaliana.TAIR10.genes2AraCyc.txt',
+                       'arabidopsis_thaliana.TAIR10.genes2GO.txt',
+                       'arabidopsis_thaliana.TAIR10.genes2IPR.txt',
+                       'arabidopsis_thaliana.TAIR10.genes2Pfam.txt',
+                       'arabidopsis_thaliana.TAIR10.genes2PO.txt']
+    'terms': ['IPR.terms.tsv', 'GO.terms.tsv', 'KEGG>terms.tsv']
+})
+```
+Alternatively, you may have created the terms DataFrame using the `vocabs.getTerms()` function described above.  If so, you can leave out the `terms` argument in the `importFiles()` function call above and set the terms manually:
+
+```Python
+fe.setTerms(terms)
+```
+Now that FUNC-E has all of the necessary files and settings, you can perform functional enrichment:
+
+```Python
+fe.run()
+```
+
+If you only wish to perform enrichment analysis and not clustering you can provide the `cluster=False` argument:
+
+```Python
+fe.run(cluster=False)
+```
+
+If you want to limit enrichment to only a subset of modules and/or vocabularies you can provide the `modules` and `vocabs` arguments:
+
+```Python
+fe.run(modules=['module1', 'module2'], vocabs=['GO'])
+```
+
+Once completed you can access results using the following attributes of the `FUNC_E` object:
+
+- `fe.enrichment`: a Pandas DataFrame containing the results of the enrichment test, including the p-value and bonferroni and bejamini corrected p-values
+- `fe.clusters`: a Pandas DataFrame listing the the clusters that were identified contiaing the EASE score and geometric mean of p-values.
+- `fe.cluster_terms`: a copy of the enrichment report, but with only clustered terms.
+
+Finally, below are example commands to save results to a file:
+```Python
+fe.enrichment.sort_values('Fishers_pvalue').to_csv('FUNC-E.enriched_terms.tsv', sep="\t", index=None)
+
+fe.clusters.to_csv('FUNC-E.clusters.tsv', sep="\t", index=None)
+
+fe.cluster_terms.to_csv('FUNC-E.cluster_terms.tsv', sep="\t", index=None)
 ```
