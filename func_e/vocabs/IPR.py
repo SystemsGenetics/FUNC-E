@@ -13,5 +13,5 @@ def getTerms():
             continue
         cols = line.decode("utf-8").split("\t")
         terms_list.append(['IPR', cols[0], cols[2]])
-    terms = pd.DataFrame(terms_list, columns=['Vocab', 'Term', 'Name'])
+    terms = pd.DataFrame(terms_list, columns=['Vocabulary', 'Term', 'Name'])
     return terms

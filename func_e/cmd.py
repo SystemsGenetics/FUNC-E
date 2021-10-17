@@ -1,12 +1,32 @@
 import os.path
 from os import path
 import argparse
-from func_e.FUNC_E import FUNC_E
 
-def parseArgs():
+from func_e.FUNC_E import FUNC_E
+import func_e.vocabs.all as vocabs
+
+def getTerms():
     """
-    Retrieves the arguments provided on the command-line.
     """
+    parser = argparse.ArgumentParser(description="This script generates files copmatible with the --terms argument for FUNC-E.")
+
+    parser.add_argument("--vocab", dest="vocab", type=str, nargs='*',
+        required=False, help="Optional.  Specify the term vocabulary ID to perform enrichment and clustering.  Provide as many vocabulary IDs as desired.  Vocab IDs may include, for example, GO, IPR, KEGG, TOS, GNAME or whatever vocabularies are provided.  Be sure that these vocabularies are present in the terms list or enrichment will be not be performed.")
+    parser.add_argument("--outprefix", dest="outprefix", type=str,
+        default=None, required=False, help="Optional.  Provide a prefix for the output file.")
+
+    args = parser.parse_args()
+    terms = vocabs.getTerms(args.vocab)
+
+    outprefix = args.outprefix + '.' if args.outprefix else ''
+    terms.to_csv(outprefix + 'terms.tsv', index=None, sep="\t", header=None)
+
+
+def func_e():
+    """
+    """
+
+    # Retrieves the arguments provided on the command-line.
     parser = argparse.ArgumentParser(description="This script will perform functional enrichment and enriched term clustering on a list of genes.You must provide a background file of gene or transcript names, a network or query file, a set of vocabularies (e.g. GO, InterPro, etc), and a file mapping genes in the network or query file to the terms in the vocabularies. For information on the format of these files see the argument section below.")
 
     parser.add_argument("--background", dest="background", type=str,
@@ -27,10 +47,10 @@ def parseArgs():
     parser.add_argument("--outprefix", dest="outprefix", type=str,
         default=None, required=False, help="Optional.  Provide a prefix for the output reports.")
 
-    parser.add_argument("--module", dest="module", type=str,
+    parser.add_argument("--module", dest="module", type=str, default=[],
         required=False, help="Optional. Specify a module name to limit the counting by module.")
 
-    parser.add_argument("--vocab", dest="vocab", type=str, nargs='*',
+    parser.add_argument("--vocab", dest="vocab", type=str, nargs='*', default=[],
         required=False, help="Optional.  Specify the term vocabulary ID to perform enrichment and clustering.  Provide as many vocabulary IDs as desired.  Vocab IDs may include, for example, GO, IPR, KEGG, TOS, GNAME or whatever vocabularies are provided.  Be sure that these vocabularies are present in the terms list or enrichment will be not be performed.")
 
     parser.add_argument("--similarity_threshold", dest="similarity_threshold", type=str,
@@ -54,17 +74,7 @@ def parseArgs():
     parser.add_argument("--verbose", dest="verbose", type=float, default="1",
         required=False, help="Optional. Set to 1 to print to STDOUT default progress deteails. Setto 2 for debugging logs. Set to 0 to run quietly without anything printed to STDOUT. The default value is 1.")
 
-    # TODO: make sure that the either the network or query arguments are
-    # provided.
-
-    return parser.parse_args()
-
-
-def func_e():
-    """
-    The main subrouting of FUNC-E.
-    """
-    args = parseArgs()
+    args = parser.parse_args()
 
     fe = FUNC_E()
     fe.setVerbosity(args.verbose)

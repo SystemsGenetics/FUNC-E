@@ -12,7 +12,7 @@ def getTerms():
         line = line.decode("utf-8")
         if re.search(r'^id: GO', line):
             if len(cols.keys()) == 3:
-                terms_list.append([cols['Vocab'], cols['Term'], cols['Name']])
+                terms_list.append([cols['Vocabulary'], cols['Term'], cols['Name']])
             cols = {}
             m = re.search(r'^id: (GO:\d+)', line)
             cols['Term'] = m.group(1)
@@ -21,6 +21,6 @@ def getTerms():
             cols['Name'] = m.group(1)
         if re.search(r'^namespace: ', line):
             m = re.search(r'^namespace: (.+)', line)
-            cols['Vocab'] = 'GO' #m.group(1)
-    terms = pd.DataFrame(terms_list, columns=['Vocab', 'Term', 'Name'])
+            cols['Vocabulary'] = 'GO' #m.group(1)
+    terms = pd.DataFrame(terms_list, columns=['Vocabulary', 'Term', 'Name'])
     return terms

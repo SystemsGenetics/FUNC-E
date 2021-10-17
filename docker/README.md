@@ -1,2 +1,0 @@
-# Docker
-These dockerfiles contain runtime environments necessary for using the perl and python versions of FUNC-E. To use, run them with a bash entrypoint (which is done already in the kube deployment section), then exec into them to run experiments.

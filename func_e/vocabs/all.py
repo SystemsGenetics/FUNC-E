@@ -6,7 +6,7 @@ import pandas as pd
 def getTerms(vocabs = []):
     """
     """
-    terms = pd.DataFrame(columns=['Vocab', 'Term', 'Name'])
+    terms = pd.DataFrame(columns=['Vocabulary', 'Term', 'Name'])
     if 'GO' in vocabs:
         terms = pd.concat([terms, GO_getTerms()])
     if 'IPR' in vocabs:

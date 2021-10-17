@@ -3,7 +3,7 @@ import pandas as pd
 
 def getTerms():
     return
-    
+
     url = 'http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.full.gz'
     r = requests.get(url, allow_redirects=True)
 
@@ -15,5 +15,5 @@ def getTerms():
             continue
         cols = line.decode("utf-8").split("\t")
         terms_list.append(['Pfam', cols[1], cols[4]])
-    terms = pd.DataFrame(terms_list, columns=['Vocab', 'Term', 'Name'])
+    terms = pd.DataFrame(terms_list, columns=['Vocabulary', 'Term', 'Name'])
     return terms

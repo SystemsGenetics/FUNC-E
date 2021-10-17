@@ -144,31 +144,23 @@ class FUNC_E(object):
     def importFiles(self, fdict):
         """
         """
-        if fdict['background']:
+        if 'background' in fdict.keys():
             self.importBackgroundFile(fdict['background'])
-        else:
-            raise Exception("A background file is required." )
 
-        if fdict['query']:
+        if 'query' in fdict.keys():
             self.importQueryFile(fdict['query'])
-        else:
-            raise Exception("A query file is required." )
 
-        if fdict['terms']:
+        if 'terms' in fdict.keys():
             if isinstance(fdict['terms'], list):
                 self.importTermsFiles(fdict['terms'])
             else:
                 self.importTermsFiles([fdict['terms']])
-        else:
-            raise Exception("At least one term file is required." )
 
-        if fdict['terms2features']:
+        if 'terms2features' in fdict.keys():
             if isinstance(fdict['terms2features'], list):
                 self.importTerms2FeaturesFiles(fdict['terms2features'])
             else:
                 self.importTerms2FeaturesFiles([fdict['terms2features']])
-        else:
-            raise Exception("At least one term2features file is required." )
 
     def doCounts(self):
         """

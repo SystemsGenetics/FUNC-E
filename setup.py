@@ -24,5 +24,6 @@ setup(
     tests_require=['pytest'],
     entry_points={'console_scripts': [
         'FUNC-E = func_e.cmd:func_e',
+        'FUNC-E-terms = func_e.cmd:getTerms'
     ]},
 )
