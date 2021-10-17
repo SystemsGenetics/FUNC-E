@@ -160,8 +160,10 @@ terms = vocabs.getTerms(['GO', 'KEGG', 'IPR'])
 ```
 
 ### Perform Functional Enrichment Analysis
-To perform functional enrichment using the FUNC-E API start by first instantiating a `FUNC_E` object.
+To perform functional enrichment using the FUNC-E API start by importing the FUNC_E object module and then instantiating a `FUNC_E` object.
 ```Python
+from func_e.FUNC_E import FUNC_E
+
 fe = FUNC_E()
 ```
 
