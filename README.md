@@ -23,11 +23,9 @@ pip install .
 
 Before using KINC you must prepare your files.  You will need to prepare four files:
 - A genomic background file containing the full list of genes.
-- A query list of genes or probesets that will be analyzed for enrichment of function.
+- A query list of genes that will be analyzed for enrichment of function.
 - One or more files containing a list of functional terms used for enrichment.
 - One or more files that associates functional terms with genes.
-
-Additionally, if you provide probesets rather than genes and you would like to convert probeset IDs to genes you must also prepare a file that maps probesets to genes.  Each of these files are described below.
 
 ## Genomic Background (--background option)
 FUNC-E requires the complete list of genes. This serves as the genomic "background". This file should have a single column with each gene listed on a separate line. For example to first 10 lines of a TAIR10 background file would be:
@@ -45,7 +43,7 @@ AT1G01073
 AT1G01080
 ```
 ## Query List (--query_list option)
-The query list contains the gene or probeset list that will undergo functional enrichment.  This file allows you to specify multiple groups (i.e. modules) of genes for enrichment. The file should be tab-delimited.  The first column should contain the list of genes and the second column the group (or module) name name.  The group name allows for multiple groups of genes to be listed in the same file but enrichment  performed separately for each. The second column, however, may be left blank and only a single column of gene names can be provided.  
+The query list contains the gene list that will undergo functional enrichment.  This file allows you to specify multiple groups (i.e. modules) of genes for enrichment. The file should be tab-delimited.  The first column should contain the list of genes and the second column the group (or module) name name.  The group name allows for multiple groups of genes to be listed in the same file but enrichment performed separately for each. The second column, however, may be left blank and only a single column of gene names can be provided.  
 
 ```
 AT1G01010 Module1
@@ -69,7 +67,7 @@ IPR     IPR000002       Cdc20/Fizzy
 IPR     IPR000003       Retinoid X receptor
 IPR     IPR000005       Helix-turn-helix, AraC type
 ```
-Note: there are shell scripts in the terms directory of this repository to help creation of term lists.  Scripts for popular controlled vocabularies are provided.  See the README.md file in that directory for more details.
+
 
 ## Term Mapping List (--terms2features option)
 A term mapping list maps the genes in the genomic background to terms in the term list.  This file should be tab delimited and consist of two columns:  locus/transcript ID, term name. The locus/transcript ID must be present in the genomics background file and the term name must be present in in the terms list file(s).  The following is example lines from a mapping list for rice genes:
