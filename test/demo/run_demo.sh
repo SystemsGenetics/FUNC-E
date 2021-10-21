@@ -4,4 +4,10 @@ FUNC-E \
   --terms GO.terms.txt IPR.terms.txt \
   --terms2features oryza_sativa.MSU_v7_0.genes2GO.txt oryza_sativa.MSU_v7_0.genes2IPR.txt \
   --outprefix demo_run \
-  --ecut 0.01
+  --ecut 0.01 \
+  --similarity_term_over 3 \
+  --percent_similarity 0.5 \
+  --initial_group_membership 3 \
+  --multiple_linkage_threshold 0.5 \
+  --final_group_membership 3 \
+  --similarity_threshold 0.5 

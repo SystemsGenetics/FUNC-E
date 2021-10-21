@@ -358,14 +358,6 @@ class FUNC_E(object):
         all_terms = self.terms['Term'].values
         num_all_terms = len(all_terms)
 
-        # Use all terms when comparing features.
-        #qfterms = pd.DataFrame(self.terms2features.set_index(['Feature'])
-        #  .join(self.query.set_index('Feature'), how='inner')
-        #  .reset_index()
-        #  .groupby(['Feature','Module'])['Term']
-        #  .apply(list)).reset_index().set_index('Feature')
-        #qfterms = qfterms[qfterms['Module'] == module]['Term'].to_dict()
-
         # Use the enriched terms only when comparing features.
         qfterms = mefeatures.set_index(['Feature'])['Term'].to_dict()
 
@@ -405,12 +397,12 @@ class FUNC_E(object):
                     k = cohen_kappa_score(li, lj)
 
                 if k >= self.similarity_threshold:
-                    scores.append([fi, fj, module, k])
+                    scores.append([fi, fj, module, k, overlap])
 
         if self.verbose > 0:
             pbar.update(total_comps)
             pbar.finish()
-        self.kappa = pd.concat([self.kappa, pd.DataFrame(scores, columns=['Feature1', 'Feature2', 'Module', 'Score'])], ignore_index=True)
+        self.kappa = pd.concat([self.kappa, pd.DataFrame(scores, columns=['Feature1', 'Feature2', 'Module', 'Score', 'Overlap'])], ignore_index=True)
 
     def doKappa(self, modules = [] ):
         """
@@ -434,6 +426,8 @@ class FUNC_E(object):
         for i in range(0, len(efeatures)):
             feature = efeatures[i]
 
+            # A feature with enriched terms could be missing from the seed
+            # groups if it has no meaningful Kappa score with another gene.
             if not (feature in seeds.keys()):
                 continue
 
@@ -455,8 +449,11 @@ class FUNC_E(object):
             # Count the number of genes that have a kappa score > the threshold
             for j in range(0, len(test_seed)):
                 for k in range(j+1, len(test_seed)):
-                    jk_index = test_seed[j] + '-' + test_seed[k]
-                    if ((jk_index in kappa.keys()) and (kappa[jk_index] > self.similarity_threshold)):
+                    jk_index1 = test_seed[j] + '-' + test_seed[k]
+                    jk_index2 = test_seed[k] + '-' + test_seed[j]
+                    if ((jk_index1 in kappa.keys()) and (kappa[jk_index1] >= self.similarity_threshold)):
+                        good_count = good_count + 1
+                    elif ((jk_index2 in kappa.keys()) and (kappa[jk_index2] >= self.similarity_threshold)):
                         good_count = good_count + 1
                     total_count = total_count + 1
 
@@ -473,15 +470,14 @@ class FUNC_E(object):
         """
         new_groups = []
         used = []
-        has_merged = False
+        do_merge = False
+        best = {'i': None, 'j': None, 'perci': 0, 'percj': 0}
         for i in range(0, len(groups)):
 
             # Skip groups that are already used in a merge.
             if i in used:
                 continue
 
-            bestj_perc = 0
-            bestj = None
             for j in range(i+1, len(groups)):
 
                 # Skip groups that are already used in a merge.
@@ -497,30 +493,28 @@ class FUNC_E(object):
                 # see if this is the best matching group and if so, we'll
                 # keep that information so we can merge in the best later.
                 if (perci >= self.multiple_linkage_threshold) or (percj >= self.multiple_linkage_threshold):
-                    if min(perci, percj) > bestj_perc:
-                        bestj_perc = min(perci, percj)
-                        bestj = j
+                    if min(perci, percj) > min(best['perci'], best['percj']):
+                        best['i'] = i
+                        best['j'] = j
+                        best['perci'] = perci
+                        best['percj'] = percj
+                        do_merge = True
 
-            # If any of the groups overlap with i let's form a new group,
-            # and mark i and j as used so they don't get used again in another
-            # merge.
-            if bestj is not None:
-                new_groups.append(list(set(groups[i]) | set(groups[bestj])))
-                used.append(i)
-                used.append(j)
-                has_merged = True
-            else:
-                # The i group couldn't be merged but let's keep it around
-                # for the next recursion.
+        # If any of the groups overlap then let's form a new group, add
+        # in the unmerged groups and recurse.
+        if do_merge:
+            new_groups.append(list(set(groups[best['i']]) | set(groups[best['j']])))
+            self._log("...Merging seeds {} and {} of {} total.".format(best['i'], best['j'], len(groups)), level=2)
+            for i in range(0, len(groups)):
+                if i == best['i']:
+                    continue;
+                if i == best['j']:
+                    continue;
                 new_groups.append(groups[i])
-                used.append(i)
-
-        # As long as we have merged at least one group we should
-        # recurse and see if we can now marge more.
-        if has_merged:
             return self._mergeGroups(new_groups)
+        # If we didn't merge then we're done and we should return.
         else:
-            # If we didn't merge then we're done and we should return.
+            self._log("...Total Groups {}.".format(len(groups)), level=2)
             return groups
 
     def _calculateClusterStats(self, clusters, module):
@@ -559,7 +553,7 @@ class FUNC_E(object):
 
         # Generate the starting seeds by creating a dictionary of feature names
         # with the values being all of the other features with which they
-        # have a meaningful kapp score.
+        # have a meaningful kappa score.
         f1 = self.kappa.groupby('Feature1')['Feature2'].apply(list).reset_index()
         f2 = self.kappa.groupby('Feature2')['Feature1'].apply(list).reset_index()
         f1.columns = ['Feature', 'Matches']
@@ -567,7 +561,7 @@ class FUNC_E(object):
         seeds = pd.concat([f1, f2]).groupby('Feature')['Matches'].apply(list).apply(lambda x: set(np.sort(np.unique(np.concatenate(x))))).to_dict()
 
         # Index the Kappa dataframe for easy lookup
-        kappa =self.kappa.copy()
+        kappa = self.kappa.copy()
         kappa.index = kappa.apply(lambda x: "-".join(np.sort(np.array([x['Feature1'], x['Feature2']]))), axis=1)
         kappa = kappa['Score'].to_dict()
 
@@ -576,9 +570,11 @@ class FUNC_E(object):
 
         # Remove any groups that don't meet out final size limit.
         final_clusters = []
-        for cluster in clusters:
-            if len(cluster) > self.final_group_membership:
-                final_clusters.append(cluster)
+        for i in range(0, len(clusters)):
+            if len(clusters[i]) >= self.final_group_membership:
+                final_clusters.append(clusters[i])
+            else:
+                self._log("...Removing group {} for too few members.".format(i))
 
         # Get the cluster stats
         stats = self._calculateClusterStats(final_clusters, module)
@@ -634,10 +630,10 @@ class FUNC_E(object):
         #
         #                     Yes       No     Totals
         #                  ------------------
-        #  In Module       |  n11   |   n12  | n1p
-        #  In Background   |  n21   |   n22  | n2p
+        #  In Module       |  n11   |   n12  |  n1p
+        #  In Background   |  n21   |   n22  |  n2p
         #                  -----------------
-        #  Totals           np1      np2      npp
+        #  Totals             np1      np2      npp
         #
         n11 = modCounts.loc[modCounts['Term'] == term]['Feature'].iloc[0]
         n21 = self.bgCounts.loc[self.bgCounts['Term'] == term]['Feature'].iloc[0]
