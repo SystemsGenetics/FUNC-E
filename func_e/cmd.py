@@ -1,6 +1,7 @@
 import os.path
 from os import path
 import argparse
+import csv
 
 from func_e.FUNC_E import FUNC_E
 import func_e.vocabs.all as vocabs
@@ -19,7 +20,8 @@ def getTerms():
     terms = vocabs.getTerms(args.vocab)
 
     outprefix = args.outprefix + '.' if args.outprefix else ''
-    terms.to_csv(outprefix + 'terms.tsv', index=None, sep="\t", header=None)
+    terms.to_csv(outprefix + 'terms.tsv', index=None, sep="\t",
+                 quoting=csv.QUOTE_NONE, doublequote=False)
 
 
 def func_e():

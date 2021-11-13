@@ -12,6 +12,7 @@ def getTerms():
             in_header = False
             continue
         cols = line.decode("utf-8").split("\t")
-        terms_list.append(['IPR', cols[0], cols[2]])
-    terms = pd.DataFrame(terms_list, columns=['Vocabulary', 'Term', 'Name'])
+        terms_list.append(['IPR', 'IPR', cols[0], cols[2], ''])
+        
+    terms = pd.DataFrame(terms_list, columns=['ID_Space', 'Vocabulary', 'Term', 'Name', 'Definition'])
     return terms

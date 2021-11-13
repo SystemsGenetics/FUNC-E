@@ -10,8 +10,8 @@ def getOrthologs():
     terms_list = []
     for line in r.content.splitlines():
         cols = line.decode("utf-8").split("\t")
-        terms_list.append(['KEGG', cols[0], cols[1]])
-    terms = pd.DataFrame(terms_list, columns=['Vocabulary', 'Term', 'Name'])
+        terms_list.append(['KEGG', 'KEGG_ORTHOLOG', cols[0], cols[1], ''])
+    terms = pd.DataFrame(terms_list, columns=['ID_Space', 'Vocabulary', 'Term', 'Name', 'Definition'])
     terms['Term'] = terms['Term'].str.replace(r'ko:','', regex=True)
 
     return terms
@@ -25,8 +25,8 @@ def getPathways():
     terms_list = []
     for line in r.content.splitlines():
         cols = line.decode("utf-8").split("\t")
-        terms_list.append(['KEGG', cols[0], cols[1]])
-    terms = pd.DataFrame(terms_list, columns=['Vocabulary', 'Term', 'Name'])
+        terms_list.append(['KEGG', 'KEGG_PATHWAY', cols[0], cols[1], ''])
+    terms = pd.DataFrame(terms_list, columns=['ID_Space', 'Vocabulary', 'Term', 'Name', 'Definition'])
     terms['Term'] = terms['Term'].str.replace(r'path:map','ko', regex=True)
     return terms
 
@@ -39,8 +39,9 @@ def getModules():
     terms_list = []
     for line in r.content.splitlines():
         cols = line.decode("utf-8").split("\t")
-        terms_list.append(['KEGG', cols[0], cols[1]])
-    terms = pd.DataFrame(terms_list, columns=['Vocabulary', 'Term', 'Name'])
+        terms_list.append(['KEGG', 'KEGG_MODULES', cols[0], cols[1], ''])
+
+    terms = pd.DataFrame(terms_list, columns=['ID_Space', 'Vocabulary', 'Term', 'Name', 'Definition'])
     terms['Term'] = terms['Term'].str.replace(r'md:','', regex=True)
     return terms
 

@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 
-def getTerms():
+def getTerms(include_definition = False):
     return
 
     url = 'http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.full.gz'
