@@ -37,11 +37,11 @@ class FUNC_E(object):
 
     def reset(self):
         # Dataframes containing results
-        self.enrichment = pd.DataFrame(columns=["Module", "Term", "Name", "Count_in_Module", "Count_in_Background", "Fishers_pvalue"])
+        self.enrichment = pd.DataFrame(columns=["Module", "ID_Space", "Vocabulary", "Term", "Name", "Module Size", "Count In Module", "Count In Background", "Fishers p-value"])
         self.cluster_list = {}
-        self.clusters = pd.DataFrame(columns = ['Module', 'Cluster_Index', 'Geometric_Mean', 'EASE_Score', 'Features', 'Enriched_Terms'])
+        self.clusters = pd.DataFrame(columns = ['Module', 'Cluster Index', 'GEometric Mean', 'EASE Score', 'Features', 'Enriched Terms'])
         self.kappa = pd.DataFrame(columns=['Feature1', 'Feature2', 'Module', 'Score'])
-        self.cluster_terms = pd.DataFrame(columns = ['Term', 'Module', 'Name', 'Count_in_Module', 'Count_in_Background', 'Fishers_pvalue', 'Bonferroni', 'Benjamini', 'Cluster_Index'])
+        self.cluster_terms = pd.DataFrame(columns = ['Module', 'Cluster Index', "ID_Space", "Vocabulary", 'Term', 'Name', 'Module Size', 'Count In Module', 'Count In Background', 'Fishers p-value', 'Bonferroni', 'Benjamini'])
         self.efeatures = pd.DataFrame(columns=["Feature", "Module", "Term"])
 
     def setVerbosity(self, level=0):
@@ -114,10 +114,10 @@ class FUNC_E(object):
         self.terms.drop_duplicates(inplace=True)
 
     def importTermsFiles(self, files):
-        terms = pd.DataFrame(columns=['Vocabulary', 'Term', 'Name'])
+        terms = pd.DataFrame(columns=['ID_Space', 'Vocabulary', 'Term', 'Name', 'Definition'])
         for tfile in files:
             new_terms = pd.read_csv(tfile, header=None, sep="\t")
-            new_terms.columns = ['Vocabulary', 'Term', 'Name']
+            new_terms.columns = ['ID_Space', 'Vocabulary', 'Term', 'Name', 'Definition']
             terms = pd.concat([terms, new_terms])
         self.setTerms(terms)
 
@@ -253,8 +253,9 @@ class FUNC_E(object):
         self.enrichment.drop(index=self.enrichment.index[self.enrichment['Module'] == module], inplace=True)
         self.efeatures.drop(index=self.efeatures.index[self.efeatures['Module'] == module], inplace=True)
 
+        modSize = self.query.set_index('Module').loc[module].shape[0]
         modCounts = self.queryCounts.loc[self.queryCounts['Module'] == module]
-        modResults = pd.DataFrame(columns=["Module", "Term", "Name", "Count_in_Module", "Count_in_Background", "Fishers_pvalue"])
+        modResults = pd.DataFrame(columns=["Module", "ID_Space", "Vocabulary", "Term", "Name", "Module Size", "Count In Module", "Count In Background", "Fishers p-value"])
 
         if self.verbose > 0:
             pbar = progressbar.ProgressBar(max_value=len(modCounts['Term'].unique()))
@@ -275,20 +276,26 @@ class FUNC_E(object):
 
                 # If the Fisher's p-value is less than the cutoff then keep it.
                 if pvalue <= self.ecut:
-                    name = self.terms.loc[self.terms['Term'] == term]['Name'].iloc[0]
+                    term_details = self.terms.loc[self.terms['Term'] == term]
+                    name = term_details['Name'].iloc[0]
+                    idspace = term_details['ID_Space'].iloc[0]
                     modResults = modResults.append({
                       "Module": module,
+                      "ID_Space": idspace,
+                      "Vocabulary": vocab,
                       "Term": term,
                       "Name": name,
-                      "Count_in_Module": n11,
-                      "Count_in_Background": n21,
-                      "Fishers_pvalue": pvalue}, ignore_index=True)
+                      "Module Size": modSize,
+                      "Count In Module": n11,
+                      "Count In Background": n21,
+                      "Fishers p-value": pvalue}, ignore_index=True)
 
         if self.verbose > 0:
             pbar.update(total_tests)
             pbar.finish()
 
         # Combine the module's enriched terms with the full result set.
+        modResults.sort_values(['Module', 'Fishers p-value'], inplace=True)
         self.enrichment = pd.concat([self.enrichment, modResults], ignore_index=True)
 
         # Create the list of genes with enriched features.
@@ -315,6 +322,8 @@ class FUNC_E(object):
             self._log("Working on module: %s" % (module))
             self.doModuleEnrichment(module, vocabs)
 
+        self.enrichment.sort_values(['Module', 'Fishers p-value'], inplace=True)
+
     def doMTC(self):
         """
         Apply multiple testing correction using Bonferroni and Benjamini-Hochberg
@@ -327,9 +336,9 @@ class FUNC_E(object):
 
         bonferroni = [None, None]       # Default length-two list for scope
         benjamini = [None, None]
-        if len(self.enrichment["Fishers_pvalue"]) > 0:     # some terms are significant by ecut standard
-            bonferroni = sm.multipletests(self.enrichment["Fishers_pvalue"], method='bonferroni')
-            benjamini = sm.multipletests(self.enrichment["Fishers_pvalue"], method='fdr_bh')
+        if len(self.enrichment["Fishers p-value"]) > 0:     # some terms are significant by ecut standard
+            bonferroni = sm.multipletests(self.enrichment["Fishers p-value"], method='bonferroni')
+            benjamini = sm.multipletests(self.enrichment["Fishers p-value"], method='fdr_bh')
         else:
             bonferroni = ["Not enough significant terms", "Not enough significant terms"]   # message in result if insufficient terms
             benjamini = ["Not enough significant terms", "Not enough significant terms"]
@@ -520,19 +529,19 @@ class FUNC_E(object):
     def _calculateClusterStats(self, clusters, module):
         """
         """
-        cluster_stats = pd.DataFrame(columns = ['Module', 'Cluster_Index', 'Geometric_Mean', 'EASE_Score', 'Features', 'Enriched_Terms'])
+        cluster_stats = pd.DataFrame(columns = ['Module', 'Cluster Index', 'GEometric Mean', 'EASE Score', 'Features', 'Enriched Terms'])
         menrichment = self.enrichment[self.enrichment['Module'] == module].set_index('Term')
         for i in range(0, len(clusters)):
             features = clusters[i]
-            eterms = self.terms2features.loc[features].set_index('Term').join(menrichment, how='inner').reset_index()[['Term','Fishers_pvalue']].drop_duplicates()
-            gmean = stats.gmean(eterms['Fishers_pvalue'])
+            eterms = self.terms2features.loc[features].set_index('Term').join(menrichment, how='inner').reset_index()[['Term','Fishers p-value']].drop_duplicates()
+            gmean = stats.gmean(eterms['Fishers p-value'])
             cluster_stats = cluster_stats.append({
                 'Module': module,
-                'Cluster_Index': i + 1,
-                'Geometric_Mean': gmean,
-                'EASE_Score': - np.log10(gmean),
+                'Cluster Index': i + 1,
+                'GEometric Mean': gmean,
+                'EASE Score': - np.log10(gmean),
                 'Features': features,
-                'Enriched_Terms': list(eterms['Term'].values)
+                'Enriched Terms': list(eterms['Term'].values)
             }, ignore_index=True)
         return cluster_stats
 
@@ -586,9 +595,10 @@ class FUNC_E(object):
         self.cluster_list[module] = final_clusters
 
         # Add to the cluster terms list.
-        cluster_terms = stats.apply(lambda x: [x.copy(), self.enrichment[self.enrichment['Module'] == x['Module']].set_index('Term').loc[x['Enriched_Terms']].drop_duplicates().reset_index()], axis=1)
+        cluster_terms = stats.apply(lambda x: [x.copy(), self.enrichment[self.enrichment['Module'] == x['Module']].set_index('Term').loc[x['Enriched Terms']].drop_duplicates().reset_index()], axis=1)
         for i in range(0, len(cluster_terms)):
-            cluster_terms[i][1]['Cluster_Index'] = cluster_terms[i][0]['Cluster_Index']
+            cluster_terms[i][1]['Cluster Index'] = cluster_terms[i][0]['Cluster Index']
+            cluster_terms[i][1].sort_values(['Module', 'Cluster Index', 'Fishers p-value'], inplace=True)
             self.cluster_terms = pd.concat([self.cluster_terms, cluster_terms[i][1]], ignore_index=True)
 
     def doClustering(self, modules = []):
@@ -603,6 +613,8 @@ class FUNC_E(object):
                 continue
             self._log("Working on module: %s" % (module))
             self.doModuleClustering(module)
+
+        self.cluster_terms.sort_values(['Module', 'Cluster Index', 'Fishers p-value'], inplace=True)
 
     def _performFishersTest(self, term, module, vocab, modCounts, modVocabCounts):
         """

@@ -59,13 +59,14 @@ AT1G01080 Module2
 ```
 
 ## Term List (--terms options)
-A term list is a file that contains the terms used for enrichment.  This file should be a tab delimited file with three columns:  vocbulary, term ID and term name.  The term ID must be unique (e.g. term accession).  The term list can be contained in one large file with all terms from multiple vocabularies combined, or each vocabulary can be in separate files.  The following example combines terms from multiple vocabularies into a single list:
+A term list is a file that contains the terms used for enrichment.  This file should be a tab delimited file with five columns:  ID_Space, Vocabulary, Term, Name and Definition.  The Term must be unique (e.g. the unique accession). All columns must have values except the Definition column. The term list can be contained in one large file with all terms from multiple vocabularies combined, or each vocabulary can be in separate files.  The following example combines terms from multiple vocabularies into a single list. In the example the Definition (last column) has an empty string.
 ```
-GO      GO:0000005      ribosomal chaperone activity
-GO      GO:0000008      thioredoxin
-IPR     IPR000002       Cdc20/Fizzy
-IPR     IPR000003       Retinoid X receptor
-IPR     IPR000005       Helix-turn-helix, AraC type
+ID_Space        Vocabulary      Term    Name    Definition
+GO      biological_process      GO:0000001      mitochondrion inheritance       
+GO      biological_process      GO:0000002      mitochondrial genome maintenance      
+IPR      IPR     IPR000002       Cdc20/Fizzy      
+IPR      IPR     IPR000003       Retinoid X receptor      
+IPR      IPR     IPR000005       Helix-turn-helix, AraC type      
 ```
 
 
@@ -145,6 +146,7 @@ Additionally, the `--ecut` option provides a p-value cutoff for enrichment, and 
 
 ## Using the API
 ### Generate Terms files
+#### Automate it
 Bioinformatics tools such as [InterProScan](https://www.ebi.ac.uk/interpro/about/interproscan/), [Blast2GO](https://www.blast2go.com/) and [EnTAP](https://entap.readthedocs.io/en/latest/) (to name a few) provide the mapping of genes to controlled vocabulary terms, but creating the list of all terms in a vocabulary is still needed prior to enrichment. FUNC-E makes it easy to generate these for common vocabularies such as the Gene Ontology (GO), KEGG (KEGG) and InterPro (IPR).  
 
 To use the FUNC-E API to build a list of vocabularies, you must first import the package into your code:
@@ -157,6 +159,11 @@ To generate a Pandas DataFrame of vocabulary terms from GO, KEGG and IPR use the
 ```Python
 terms = vocabs.getTerms(['GO', 'KEGG', 'IPR'])
 ```
+### Manually Create It
+If you are using terms from vocabularies other than GO, KEGG or InterPro, then you must provide the list of terms in a Pandas Dataframe. The columns of this dataframe must match the terms file described above. The column headers must include **ID_Space**, **Vocabulary**, **Term**, **Name**, **Definition**.
+
+### Provide Features to Term mapping
+Next, you must create a Pandas DataFrame that assigns the feature (e.g., gene, transcript or protein) to  terms.  The terms must be present in the `terms` DataFrame created in the previous step.  The column headers must be **Feature** and **Term**.  
 
 ### Perform Functional Enrichment Analysis
 To perform functional enrichment using the FUNC-E API start by importing the FUNC_E class module:
