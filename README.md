@@ -11,14 +11,11 @@ FUNC-E is a Python package for functional enrichment analysis of gene lists. It 
 5. FUNC-E provides both a command-line tool and API functions for creating term lists for the Gene Ontology, KEGG and InterPro.
 
 # Installation
-The Python version is currently in develop mode so you must manually clone and install it. Soon it will be available via pip.
+You can install the most recent version of FUNC-E using pip:
 ```
-git clone git@github.com:SystemsGenetics/FUNC-E.git
-git checkout develop
+pip install func-e
+```
 
-cd FUNC_E
-pip install .
-```
 # Preparing Input Files
 
 Before using KINC you must prepare your files.  You will need to prepare four files:
