@@ -211,7 +211,7 @@ fe.importFiles({
                        'arabidopsis_thaliana.TAIR10.genes2IPR.txt',
                        'arabidopsis_thaliana.TAIR10.genes2Pfam.txt',
                        'arabidopsis_thaliana.TAIR10.genes2PO.txt']
-    'terms': ['IPR.terms.tsv', 'GO.terms.tsv', 'KEGG>terms.tsv']
+    'terms': ['IPR.terms.tsv', 'GO.terms.tsv', 'KEGG.terms.tsv']
 })
 ```
 Alternatively, you may have created the terms DataFrame using the `vocabs.getTerms()` function described above.  If so, you can leave out the `terms` argument in the `importFiles()` function call above and set the terms manually:
@@ -245,9 +245,9 @@ Once completed you can access results using the following attributes of the `FUN
 
 Finally, below are example commands to save results to a file:
 ```Python
-fe.enrichment.sort_values('Fishers_pvalue').to_csv('FUNC-E.enriched_terms.tsv', sep="\t", index=None)
+fe.enrichment.sort_values(['Module', 'Fishers p-value']).to_csv('FUNC-E.enriched_terms.tsv', sep="\t", index=None)
 
-fe.clusters.to_csv('FUNC-E.clusters.tsv', sep="\t", index=None)
+fe.clusters.sort_values(['Module','Cluster Index', 'EASE Score']).to_csv('FUNC-E.clusters.tsv', sep="\t", index=None)
 
-fe.cluster_terms.to_csv('FUNC-E.cluster_terms.tsv', sep="\t", index=None)
+fe.cluster_terms.sort_values(['Module','Cluster Index', 'Fishers p-value']).to_csv('FUNC-E.cluster_terms.tsv', sep="\t", index=None)
 ```

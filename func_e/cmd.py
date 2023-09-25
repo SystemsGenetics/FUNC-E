@@ -104,8 +104,8 @@ def func_e():
     # Write out the results files.
     outprefix = args.outprefix + '.' if args.outprefix else ''
 
-    fe.enrichment.sort_values(['Module', 'Fishers_pvalue']).to_csv(outprefix + 'FUNC-E.enriched_terms.tsv', sep="\t", index=None)
-    fe.clusters.sort_values(['Module','Cluster_Index']).to_csv(outprefix + 'FUNC-E.clusters.tsv', sep="\t", index=None)
-    fe.cluster_terms.sort_values(['Module','Cluster_Index','Fishers_pvalue']).to_csv(outprefix + 'FUNC-E.cluster_terms.tsv', sep="\t", index=None)
+    fe.enrichment.sort_values(['Module', 'Fishers p-value']).to_csv(outprefix + 'FUNC-E.enriched_terms.tsv', sep="\t", index=None)
+    fe.clusters.sort_values(['Module','Cluster Index', 'EASE Score']).to_csv(outprefix + 'FUNC-E.clusters.tsv', sep="\t", index=None)
+    fe.cluster_terms.sort_values(['Module','Cluster Index','Fishers p-value']).to_csv(outprefix + 'FUNC-E.cluster_terms.tsv', sep="\t", index=None)
     fe.kappa.to_csv(outprefix + 'FUNC-E.kappa.tsv', sep="\t", index=None)
     fe.efeatures.to_csv(outprefix + 'FUNC-E.efeatures.tsv', sep="\t", index=None)

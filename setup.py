@@ -5,7 +5,7 @@ requirements = """
   pandas
   scipy
   statsmodels
-  sklearn
+  scikit-learn
   progressbar2
   scipy
   requests

@@ -39,7 +39,7 @@ class FUNC_E(object):
         # Dataframes containing results
         self.enrichment = pd.DataFrame(columns=["Module", "ID_Space", "Vocabulary", "Term", "Name", "Module Size", "Count In Module", "Count In Background", "Fishers p-value"])
         self.cluster_list = {}
-        self.clusters = pd.DataFrame(columns = ['Module', 'Cluster Index', 'GEometric Mean', 'EASE Score', 'Features', 'Enriched Terms'])
+        self.clusters = pd.DataFrame(columns = ['Module', 'Cluster Index', 'Geometric Mean', 'EASE Score', 'Features', 'Enriched Terms'])
         self.kappa = pd.DataFrame(columns=['Feature1', 'Feature2', 'Module', 'Score'])
         self.cluster_terms = pd.DataFrame(columns = ['Module', 'Cluster Index', "ID_Space", "Vocabulary", 'Term', 'Name', 'Module Size', 'Count In Module', 'Count In Background', 'Fishers p-value', 'Bonferroni', 'Benjamini'])
         self.efeatures = pd.DataFrame(columns=["Feature", "Module", "Term"])
@@ -217,6 +217,7 @@ class FUNC_E(object):
 
     def run(self, cluster=True, modules=[], vocabs=[]):
         """
+        Performs functional enrichment after all data is loaded and added to the object.
         """
         if self.isReady() is False:
             self._log("Cannot perform this step as all necessary inputs are not set.")
@@ -278,17 +279,22 @@ class FUNC_E(object):
                 if pvalue <= self.ecut:
                     term_details = self.terms.loc[self.terms['Term'] == term]
                     name = term_details['Name'].iloc[0]
-                    idspace = term_details['ID_Space'].iloc[0]
-                    modResults = modResults.append({
-                      "Module": module,
-                      "ID_Space": idspace,
-                      "Vocabulary": vocab,
-                      "Term": term,
-                      "Name": name,
-                      "Module Size": modSize,
-                      "Count In Module": n11,
-                      "Count In Background": n21,
-                      "Fishers p-value": pvalue}, ignore_index=True)
+                    idspace = term_details['ID_Space'].iloc[0]                 
+                    new_row = pd.DataFrame({
+                      "Module": [module],
+                      "ID_Space": [idspace],
+                      "Vocabulary": [vocab],
+                      "Term": [term],
+                      "Name": [name],
+                      "Module Size": [modSize],
+                      "Count In Module": [n11],
+                      "Count In Background": [n21],
+                      "Fishers p-value": [pvalue]})
+                    if (modResults.shape[0] == 0):
+                        modResults = new_row                        
+                    else:
+                        modResults = pd.concat([modResults, new_row], ignore_index = True)
+
 
         if self.verbose > 0:
             pbar.update(total_tests)
@@ -296,17 +302,26 @@ class FUNC_E(object):
 
         # Combine the module's enriched terms with the full result set.
         modResults.sort_values(['Module', 'Fishers p-value'], inplace=True)
-        self.enrichment = pd.concat([self.enrichment, modResults], ignore_index=True)
+        if (self.enrichment.shape[0] > 0):
+            if (modResults.shape[0] > 0):
+                self.enrichment = pd.concat([self.enrichment, modResults], ignore_index=True)
+        else:
+            if (modResults.shape[0] > 0):
+                self.enrichment = modResults
 
         # Create the list of genes with enriched features.
-        efeatures = pd.DataFrame(self.terms2features.set_index('Term')
-            .join(modResults.set_index('Term'), how="inner")[['Feature', 'Module']]
-            .reset_index()
-            .groupby(['Feature', 'Module'])['Term']
-            .apply(list)).reset_index()
+        if modResults.shape[0] > 0:
+            efeatures = pd.DataFrame(self.terms2features.set_index('Term')
+                .join(modResults.set_index('Term'), how="inner")[['Feature', 'Module']]
+                .reset_index()
+                .groupby(['Feature', 'Module'])['Term']
+                .apply(list)).reset_index()
 
-        efeatures = efeatures.set_index(['Feature','Module']).join(self.query.set_index(['Feature','Module']), how='inner').reset_index()
-        self.efeatures = pd.concat([self.efeatures, efeatures], ignore_index=True)
+            efeatures = efeatures.set_index(['Feature','Module']).join(self.query.set_index(['Feature','Module']), how='inner').reset_index()        
+            if self.efeatures.shape[0] > 0:
+                self.efeatures = pd.concat([self.efeatures, efeatures], ignore_index=True)
+            else:
+                self.efeatures = efeatures
 
 
     def doEnrichment(self, modules = [], vocabs = []):
@@ -411,7 +426,11 @@ class FUNC_E(object):
         if self.verbose > 0:
             pbar.update(total_comps)
             pbar.finish()
-        self.kappa = pd.concat([self.kappa, pd.DataFrame(scores, columns=['Feature1', 'Feature2', 'Module', 'Score', 'Overlap'])], ignore_index=True)
+        
+        if (self.kappa.shape[0] == 0):
+            self.kappa = pd.concat([pd.DataFrame(scores, columns=['Feature1', 'Feature2', 'Module', 'Score', 'Overlap'])], ignore_index=True)
+        else:
+            self.kappa = pd.concat([self.kappa, pd.DataFrame(scores, columns=['Feature1', 'Feature2', 'Module', 'Score', 'Overlap'])], ignore_index=True)
 
     def doKappa(self, modules = [] ):
         """
@@ -529,20 +548,24 @@ class FUNC_E(object):
     def _calculateClusterStats(self, clusters, module):
         """
         """
-        cluster_stats = pd.DataFrame(columns = ['Module', 'Cluster Index', 'GEometric Mean', 'EASE Score', 'Features', 'Enriched Terms'])
+        cluster_stats = pd.DataFrame(columns = ['Module', 'Cluster Index', 'Geometric Mean', 'EASE Score', 'Features', 'Enriched Terms'])
         menrichment = self.enrichment[self.enrichment['Module'] == module].set_index('Term')
         for i in range(0, len(clusters)):
             features = clusters[i]
             eterms = self.terms2features.loc[features].set_index('Term').join(menrichment, how='inner').reset_index()[['Term','Fishers p-value']].drop_duplicates()
             gmean = stats.gmean(eterms['Fishers p-value'])
-            cluster_stats = cluster_stats.append({
-                'Module': module,
-                'Cluster Index': i + 1,
-                'GEometric Mean': gmean,
-                'EASE Score': - np.log10(gmean),
-                'Features': features,
-                'Enriched Terms': list(eterms['Term'].values)
-            }, ignore_index=True)
+            new_row = pd.DataFrame({
+                'Module': [module],
+                'Cluster Index': [i + 1],
+                'Geometric Mean': [gmean],
+                'EASE Score': [- np.log10(gmean)],
+                'Features': [features],
+                'Enriched Terms': [list(eterms['Term'].values)]})
+
+            if (cluster_stats.shape[0] == 0):
+                cluster_stats = new_row
+            else:
+                cluster_stats = pd.concat([cluster_stats, new_row], ignore_index = True)
         return cluster_stats
 
     def doModuleClustering(self, module):
@@ -589,7 +612,13 @@ class FUNC_E(object):
         stats = self._calculateClusterStats(final_clusters, module)
 
         # Add to the clusters data frame.
-        self.clusters = pd.concat([self.clusters, stats], ignore_index=True)
+        if self.clusters.shape[0] > 0:
+            if stats.shape[0] > 0:
+                self.clusters = pd.concat([self.clusters, stats], ignore_index=True)
+        else:
+            if stats.shape[0] > 0:
+                self.clusters = stats
+            
 
         # Add to the cluster list.
         self.cluster_list[module] = final_clusters
@@ -599,7 +628,13 @@ class FUNC_E(object):
         for i in range(0, len(cluster_terms)):
             cluster_terms[i][1]['Cluster Index'] = cluster_terms[i][0]['Cluster Index']
             cluster_terms[i][1].sort_values(['Module', 'Cluster Index', 'Fishers p-value'], inplace=True)
-            self.cluster_terms = pd.concat([self.cluster_terms, cluster_terms[i][1]], ignore_index=True)
+            if self.cluster_terms.shape[0] > 0:
+                if cluster_terms[i][1].shape[0] > 0:
+                    self.cluster_terms = pd.concat([self.cluster_terms, cluster_terms[i][1]], ignore_index=True)
+            else:
+                if cluster_terms[i][1].shape[0] > 0:
+                    self.cluster_terms = cluster_terms[i][1]
+
 
     def doClustering(self, modules = []):
         """
