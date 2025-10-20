@@ -139,6 +139,116 @@ FUNC-E \
 ```
 Additionally, the `--ecut` option provides a p-value cutoff for enrichment, and the --outprefix provides the a prefix which is added to every output file created by this script.
 
+### Output Files
+When you run FUNC-E from the command-line, it generates five tab-delimited output files. If you provide an `--outprefix` argument (e.g., `--outprefix modules-enrichment`), that prefix will be prepended to each filename. Otherwise, the files will be named with just the `FUNC-E.` prefix.
+
+#### 1. Enriched Terms File (`*.FUNC-E.enriched_terms.tsv`)
+Contains all terms that passed the enrichment p-value cutoff (specified by `--ecut`). Each row represents one enriched term in one module.
+
+**Columns:**
+- `Module`: The module name from the query list
+- `ID_Space`: The namespace of the term (e.g., GO, IPR, KEGG)
+- `Vocabulary`: The specific vocabulary within the ID space (e.g., biological_process, molecular_function)
+- `Term`: The unique term identifier (e.g., GO:0008150)
+- `Name`: Human-readable term name
+- `Module Size`: Total number of genes in the module
+- `Count In Module`: Number of genes in the module annotated with this term
+- `Count In Background`: Total number of genes in the background annotated with this term
+- `Fishers p-value`: Raw p-value from Fisher's exact test
+- `Bonferroni`: Bonferroni-corrected p-value for multiple testing
+- `Benjamini`: Benjamini-Hochberg (FDR) corrected p-value for multiple testing
+
+#### 2. Clusters File (`*.FUNC-E.clusters.tsv`)
+Summarizes the clusters of enriched terms identified through kappa statistics. Each row represents one cluster.
+
+**Columns:**
+- `Module`: The module name
+- `Cluster Index`: Numeric identifier for the cluster (1, 2, 3, ...)
+- `Geometric Mean`: Geometric mean of p-values for all terms in the cluster
+- `EASE Score`: -log10 of the geometric mean (higher scores indicate stronger enrichment)
+- `Features`: List of genes/features that share the enriched terms in this cluster
+- `Enriched Terms`: List of term IDs included in this cluster
+
+#### 3. Cluster Terms File (`*.FUNC-E.cluster_terms.tsv`)
+A filtered version of the enriched terms file, containing only terms that were assigned to clusters. This combines information from both the enrichment analysis and clustering steps.
+
+**Columns:**
+- Same as the enriched terms file, plus:
+- `Cluster Index`: The cluster to which this term belongs
+
+This file is useful for focusing on the most biologically coherent groups of enriched terms, as clustering removes isolated or weakly-related terms.
+
+#### 4. Kappa Scores File (`*.FUNC-E.kappa.tsv`)
+Contains pairwise kappa similarity scores between genes that share enriched terms. These scores are used to perform the clustering.
+
+**Columns:**
+- `Feature1`: First gene/feature in the pair
+- `Feature2`: Second gene/feature in the pair
+- `Module`: The module containing both features
+- `Score`: Cohen's kappa score (ranges from -1 to 1; values closer to 1 indicate higher similarity)
+- `Overlap`: Number of enriched terms shared between the two features
+
+Only gene pairs with kappa scores above the `--similarity_threshold` (default 0.35) are included.
+
+#### 5. Enriched Features File (`*.FUNC-E.efeatures.tsv`)
+Lists all genes/features that have at least one enriched term, along with the terms enriched for that gene.
+
+**Columns:**
+- `Feature`: The gene/feature name
+- `Module`: The module containing this feature
+- `Term`: A list of all enriched term IDs associated with this feature
+
+This file is useful for quickly identifying which genes contributed to the enrichment signal and what terms they are associated with.
+
+### Understanding Enrichment vs. Clustering
+
+FUNC-E performs two distinct analyses: **enrichment** and **clustering**. Understanding the difference between these steps is important for interpreting your results.
+
+#### Enrichment Analysis
+Enrichment analysis identifies individual functional terms that are statistically over-represented in your gene list compared to the genomic background. This is done using Fisher's exact test for each term independently.
+
+**What it tells you:**
+- Which specific functional annotations appear more frequently in your gene list than expected by chance
+- The statistical significance of each term (p-value)
+- How many genes in your list are annotated with each term
+
+**Output:** The `*.enriched_terms.tsv` file contains all terms that pass your p-value cutoff (`--ecut`).
+
+**Limitations:** Enrichment analysis often produces long lists of related or redundant terms. For example, if your genes are involved in "DNA replication," you might see dozens of enriched terms like "DNA replication," "DNA-dependent DNA replication," "nuclear DNA replication," "DNA replication initiation," etc. While all are statistically significant, they represent overlapping biological concepts.
+
+#### Clustering Analysis
+Clustering groups related enriched terms together based on the similarity of the genes annotated with those terms. FUNC-E uses **Cohen's kappa statistics** to measure how similarly two genes are annotated, then clusters genes (and their associated terms) that share similar annotation patterns. This clustering approach is adapted from the methodology developed by the [DAVID (Database for Annotation, Visualization and Integrated Discovery)](https://david.ncifcrf.gov/) tool.
+
+**What it tells you:**
+- Which groups of enriched terms represent coherent biological themes
+- Which genes share similar functional annotation patterns
+- The overall strength of each functional theme (EASE score)
+
+**Output:** The `*.clusters.tsv` and `*.cluster_terms.tsv` files contain the clustered results.
+
+**Benefits:** Clustering reduces redundancy and helps identify the major biological themes in your data. Instead of reviewing hundreds of individual terms, you can focus on a smaller number of term clusters, each representing a distinct biological process or function.
+
+#### How They Work Together
+
+1. **Enrichment first:** FUNC-E identifies all significantly enriched terms (those with p-value ≤ `--ecut`)
+2. **Kappa calculation:** For genes with enriched terms, FUNC-E calculates pairwise similarity scores based on shared term annotations
+3. **Clustering:** Genes with similar annotation patterns are grouped, and their associated enriched terms form clusters
+4. **Filtering:** Only clusters meeting size requirements (controlled by `--final_group_membership`) are retained
+
+#### Which Results Should You Use?
+
+- **Use enriched terms** (`*.enriched_terms.tsv`) when:
+  - You want a complete list of all significant functional annotations
+  - You need to identify every specific term that is over-represented
+  - You plan to perform your own downstream filtering or analysis
+
+- **Use clustered terms** (`*.cluster_terms.tsv` and `*.clusters.tsv`) when:
+  - You want a high-level summary of biological themes
+  - Your enrichment results contain many redundant or related terms
+  - You need to prioritize the most important functional categories
+  - You're preparing results for publication or presentation
+
+**Note:** Not all enriched terms will appear in clusters. Terms that don't cluster well with others (isolated terms with unique annotation patterns) are excluded from the clustering results but remain in the enrichment results. This is by design—clustering focuses on identifying coherent functional themes rather than individual signals.
 
 
 ## Using the API
